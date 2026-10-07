@@ -55,6 +55,7 @@
       this.focused = new Set();
       this.listeners = { change: [], styleReset: [] };
       this.fixed = new Map();           // 真网页上 position:fixed 的元素 → 复制品里给它的反向补偿动画
+      this.inner = new Map();           // 页面里单独滚动的元素 → 子元素的补偿动画
       this.stats = { buildMs: 0, nodes: 0, mutBatches: 0, mutMs: 0, maxMutMs: 0, fixedMs: 0 };
       this.compositorSync = shell.compositorSync !== false;
       this._raf = 0;
@@ -137,6 +138,8 @@
       clearInterval(this._shadowTimer);
       for (const a of [this._animY, this._animX, ...this.fixed.values()]) if (a) a.cancel();
       this.fixed.clear();
+      for (const st of this.inner.values()) for (const k of st.kids || []) k.anim.cancel();
+      this.inner.clear();
       if (this.clip) this.clip.remove();
       this.frame = null;
     }
@@ -163,8 +166,10 @@
       this._onScroll = (e) => this._scrollFrom(e.target);
       add(doc, 'scroll', this._onScroll, { capture: true, passive: true });
       add(win, 'resize', () => { this._sizeFrame(); this._holesDirty = true; this._syncAllScroll(); }, { passive: true });
+      // 滚轮一按下就把要滚的区域的补偿准备好，不用等第一个 scroll 事件（那时合成器已经滚了一帧）
+      add(win, 'wheel', (e) => this._preScroll(e), { capture: true, passive: true });
       add(win, 'pointermove', (e) => this._hover(e), { capture: true, passive: true });
-      add(win, 'pointerover', (e) => this._hover(e), { capture: true, passive: true });
+      add(win, 'pointerover', (e) => { this._hover(e); this._preScroll(e); }, { capture: true, passive: true });
       add(doc, 'pointerleave', () => this._setHover([]), { passive: true });
       add(win, 'focusin', () => this._focus(), true);
       add(win, 'focusout', () => setTimeout(() => this._focus(), 0), true);
@@ -605,6 +610,7 @@
           if (c.scrollTop !== t.scrollTop) c.scrollTop = t.scrollTop;
           if (c.scrollLeft !== t.scrollLeft) c.scrollLeft = t.scrollLeft;
           this.scrolled.add(t);
+          if (this.compositorSync) this._innerSync(t, c);
         }
       }
       this._holesDirty = true;
@@ -662,6 +668,62 @@
       return changed;
     }
 
+    // ---------------------------------------------------------------- 页面里单独滚动的区域
+    _preScroll(e) {
+      if (!this.compositorSync || !e.composedPath) return;
+      for (const n of e.composedPath()) {
+        if (!n || n.nodeType !== 1 || n === document.documentElement || n === document.body) continue;
+        if (n.scrollHeight <= n.clientHeight && n.scrollWidth <= n.clientWidth) continue;
+        const ov = getComputedStyle(n);
+        if (!/auto|scroll|overlay/.test(ov.overflowY + ov.overflowX)) continue;
+        const c = this.map.get(n);
+        if (c) this._innerSync(n, c);
+      }
+    }
+
+    /**
+     * 和整页一样的问题：区域里的内容由合成器直接滚，脚本晚一帧。复制品里这个区域的子元素各加一个平移动画，
+     * 时间轴用真网页这个区域的滚动条：平移 = 复制品实际滚到的位置 − 合成器当下的位置。
+     * 子元素太多（长列表直接挂在滚动区域下）就不补偿，免得几百个图层。
+     */
+    _innerSync(t, c) {
+      const vert = t.scrollHeight - t.clientHeight >= t.scrollWidth - t.clientWidth;
+      let st = this.inner.get(t);
+      const kids = c.children;
+      if (st && (st.skip ? st.n === kids.length : st.kids.length === kids.length && st.kids.every((k, i) => k.el === kids[i])
+          && st.vert === vert)) {
+        if (st.skip) return;
+      } else {
+        if (st && st.kids) for (const k of st.kids) k.anim.cancel();
+        if (!kids.length || kids.length > 40 || typeof ScrollTimeline !== 'function') {
+          this.inner.set(t, { skip: true, n: kids.length });
+          return;
+        }
+        st = { vert, kids: [], s: null, max: null };
+        let tl;
+        try { tl = new this.cwin.ScrollTimeline({ source: t, axis: vert ? 'block' : 'inline' }); } catch (e) { return; }
+        for (const el of kids) {
+          const t0 = this.cwin.getComputedStyle(el).translate;
+          const base = !t0 || t0 === 'none' ? ['0px', '0px', ''] : [t0.split(' ')[0], t0.split(' ')[1] || '0px', t0.split(' ')[2] || ''];
+          let anim;
+          try { anim = el.animate([{}, {}], { timeline: tl, fill: 'both', easing: 'linear' }); } catch (e) { continue; }
+          st.kids.push({ el, base, anim });
+        }
+        this.inner.set(t, st);
+      }
+      const s = vert ? c.scrollTop : c.scrollLeft;
+      const max = vert ? t.scrollHeight - t.clientHeight : t.scrollWidth - t.clientWidth;
+      if (s === st.s && max === st.max) return;
+      st.s = s;
+      st.max = max;
+      for (const k of st.kids) {
+        const [bx, by, bz] = k.base;
+        const z = bz ? ' ' + bz : '';
+        const at = (d) => (vert ? `${bx} calc(${by} + ${d}px)${z}` : `calc(${bx} + ${d}px) ${by}${z}`);
+        k.anim.effect.setKeyframes([{ translate: at(s) }, { translate: at(s - max) }]);
+      }
+    }
+
     // ---------------------------------------------------------------- 固定元素
     /**
      * 整张复制品随滚动补偿平移时，复制品里的固定元素（顶栏、浮动按钮）也会跟着晃。
@@ -679,6 +741,12 @@
             if (cs.position === 'fixed') {
               this._fix(el);
               return NodeFilter.FILTER_REJECT;   // 里面的跟着它走
+            }
+            // 顺便把页面里能单独滚动的区域的补偿先准备好
+            if (/auto|scroll|overlay/.test(cs.overflowY + cs.overflowX)
+                && (el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth)) {
+              const c = this.map.get(el);
+              if (c) this._innerSync(el, c);
             }
             return NodeFilter.FILTER_SKIP;
           },
