@@ -22,6 +22,8 @@ const TEXT = {
     model: '模型', fetch: '拉取模型', save: '保存', test: '测试连接', site: '开通 / 获取 Key ↗', modelHint: '例如 {m}',
     m_auto: '已自动选了 {m}（轻量、适合翻译），可以从列表里换；记得点“保存”', m_cloudOnly: '只列出 :cloud 云端模型（本机 Ollama 要先登录账号）',
     m_permFirst: '点“拉取模型”列出可用模型（第一次会请求访问这个地址的权限）',
+    m_probing: '正在试哪些云端模型你的账号现在能用……', m_probeOk: '你的账号现在能用 {m}，已选上；不能用的：{bad}',
+    m_probeNone: '这些云端模型你的账号现在都用不了（订阅到期或免费额度不含），请换本机模型或别的服务', m_paid: '要付费额度', m_gone: '已下线',
     m_needUrl: '先填服务地址', m_needKey: '先填 API Key', m_noPerm: '没有拿到访问这个地址的权限',
     m_fetching: '正在拉取……', m_empty: '服务没有返回模型列表，请手动填写模型名', m_pick: '从 {n} 个模型里选一个……',
     m_inList: '当前模型 {m} 在列表里', m_notInList: '当前填的 {m} 不在服务的模型列表里，请从列表里选一个',
@@ -57,6 +59,9 @@ const TEXT = {
     m_auto: 'Picked {m} (light and good for translation); you can choose another from the list. Remember to click Save',
     m_cloudOnly: 'Only :cloud models are listed (sign in to Ollama on this PC first)',
     m_permFirst: 'Click "Get models" to list the models (the first time Chrome asks for access to this address)',
+    m_probing: 'Checking which cloud models your account can use now…', m_probeOk: 'Your account can use {m} now, so it is selected; unavailable: {bad}',
+    m_probeNone: 'Your account cannot use any of these cloud models now (subscription expired or not in the free tier); pick a local model or another service',
+    m_paid: 'needs paid usage', m_gone: 'retired',
     m_needUrl: 'Fill in the address first', m_needKey: 'Fill in the API key first', m_noPerm: 'No permission to access this address',
     m_fetching: 'Getting the model list…', m_empty: 'The service returned no models; type the model name yourself',
     m_pick: 'Pick one of {n} models…', m_inList: '{m} is available',
@@ -235,8 +240,10 @@ async function fetchModels(ask) {
     if (list.some((m) => m.id === cur)) {
       sel.value = cur;
       say('modelMsg', t('m_inList', { m: cur }) + (cloudOnly ? '；' + t('m_cloudOnly') : ''), 'ok');
+    } else if (cloudOnly) {
+      await probeCloud(s, list, my);
     } else if (!cur) {
-      const pick = cloudOnly ? (list.find((m) => /flash|mini|air|lite|small/i.test(m.id)) || list[0]).id : PS.pickModel(list);
+      const pick = PS.pickModel(list);
       $('model').value = pick;
       sel.value = pick;
       say('modelMsg', t('m_auto', { m: pick }), 'ok');
@@ -252,6 +259,30 @@ async function fetchModels(ask) {
     if (my === fetching) $('fetch').disabled = false;
   }
   return undefined;
+}
+
+/**
+ * Ollama 云端模型：列表里的都“装”着，但订阅到期后大多要付费额度才能用（HTTP 402），有的已下线（410）。
+ * 轻量的先试，每个只让它说 1 个字；402/410 立刻返回，不花额度。找到第一个能用的就选上。
+ */
+async function probeCloud(s, list, my) {
+  say('modelMsg', t('m_probing'));
+  const light = /flash|mini|air|lite|small|gemma/i;
+  const order = [...list].sort((a, b) => (light.test(b.id) ? 1 : 0) - (light.test(a.id) ? 1 : 0));
+  const bad = [];
+  for (const m of order) {
+    if (my !== fetching) return;
+    try {
+      await LLM.probeModel(s, m.id);
+      $('model').value = m.id;
+      $('models').value = m.id;
+      say('modelMsg', t('m_probeOk', { m: m.id, bad: bad.join('、') || '—' }), 'ok');
+      return;
+    } catch (e) {
+      bad.push(m.id + (/402|付费|paid/i.test(e.message) ? '（' + t('m_paid') + '）' : /410|下线|retired/i.test(e.message) ? '（' + t('m_gone') + '）' : ''));
+    }
+  }
+  say('modelMsg', t('m_probeNone'), 'err');
 }
 
 $('models').addEventListener('change', () => {

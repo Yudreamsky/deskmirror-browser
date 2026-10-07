@@ -21,9 +21,26 @@
     return String(base || '').trim().replace(/\/+$/, '');
   }
 
+  /** 按 HTTP 状态说人话；ollama=true 时是 Ollama（云端模型 402 是订阅/免费额度不含这个模型）。 */
+  function explain(status, detail, ollama) {
+    if (status === 402) {
+      return new Error(ollama
+        ? msg('这个云端模型要付费额度：Ollama 订阅已到期，或免费额度不含它。请换一个模型（设置里“拉取模型”会找出账号现在能用的）',
+          'This cloud model needs paid usage: the Ollama subscription has expired or the free tier does not include it. Pick another model (Get models in Settings finds the ones your account can use)')
+        : msg('账户余额或额度不足，或订阅已到期', 'Out of balance or credit, or the subscription has expired') + ' (HTTP 402)');
+    }
+    if (status === 410) return new Error(msg('这个模型已经下线了，请换一个', 'This model has been retired; pick another') + ' (HTTP 410)');
+    if (ollama && status === 404) {
+      return new Error(msg('本机 Ollama 没有这个模型，先用 ollama pull 下载，或换一个', 'Ollama on this PC does not have this model; pull it first or pick another') + ' (HTTP 404)');
+    }
+    return null;
+  }
+
   async function errorOf(res) {
     let detail = '';
     try { detail = (await res.text()).slice(0, 200); } catch (e) { /* 没有正文 */ }
+    const known = explain(res.status, detail, false);
+    if (known) return known;
     if (res.status === 401 || res.status === 403) {
       return new Error(msg('API Key 不对或没有权限', 'Wrong API key or no access') + ' (HTTP ' + res.status + ')');
     }
@@ -90,7 +107,8 @@
             delete body.think;   // 这个模型没有思考开关：去掉参数重发
             continue;
           }
-          throw new Error(msg('Ollama 返回错误', 'Ollama returned an error') + ' HTTP ' + res.status + ' ' + text.slice(0, 160));
+          throw explain(res.status, text, true)
+            || new Error(msg('Ollama 返回错误', 'Ollama returned an error') + ' HTTP ' + res.status + ' ' + text.slice(0, 160));
         }
         for await (const line of lines(res)) {
           if (!line) continue;
@@ -170,6 +188,26 @@
       .filter((m) => m.id && !NOT_CHAT.test(m.id));
   }
 
+  /** 试一下这个模型现在能不能用：只让它说 1 个字。能用返回 true，不能用抛出看得懂的错误。 */
+  async function probeModel(cfg, model) {
+    const base = trimBase(cfg.baseUrl);
+    const headers = { 'Content-Type': 'application/json' };
+    if (cfg.apiKey) headers.Authorization = 'Bearer ' + cfg.apiKey;
+    if (cfg.protocol === 'ollama') {
+      const res = await post(base + '/api/chat', { method: 'POST', headers, body: JSON.stringify({ model, stream: false, think: false,
+        messages: [{ role: 'user', content: 'Hi' }], options: { num_predict: 1, num_ctx: 4096 } }) }, 'ollama');
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw explain(res.status, text, true) || new Error('HTTP ' + res.status + ' ' + text.slice(0, 120));
+      }
+      return true;
+    }
+    const res = await post(base + '/chat/completions', { method: 'POST', headers, body: JSON.stringify({ model, stream: false,
+      max_tokens: 1, messages: [{ role: 'user', content: 'Hi' }] }) }, 'service');
+    if (!res.ok) throw await errorOf(res);
+    return true;
+  }
+
   /** 设置页的“测试连接”：翻一句话。 */
   async function testConnection(T, cfg, target) {
     let out = '';
@@ -178,7 +216,7 @@
     return out;
   }
 
-  const api = { translateBatch, testConnection, listModels, setUiLang };
+  const api = { translateBatch, testConnection, listModels, probeModel, setUiLang };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else (root.__dm = root.__dm || {}).llm = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

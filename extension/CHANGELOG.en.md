@@ -1,5 +1,8 @@
 # DeskMirror for browsers · Changes
 
+## 0.3.1 (2026-10-07)
+- Choosing "Ollama Cloud models" now finds the models your account can use right now (after a subscription expires most need paid usage, and some are retired); errors say whether a model needs paid usage or was retired.
+
 ## 0.3.0 (2026-10-07)
 - Many more translation services: on this PC (Ollama, LM Studio), subscriptions (Ollama Cloud and the coding plans of Zhipu GLM, Kimi Code, Alibaba Model Studio, Volcano Ark and MiniMax), pay-as-you-go in China (DeepSeek, Qwen, Zhipu, Kimi, MiniMax, Doubao, SiliconFlow, Hunyuan, Qianfan, StepFun, ModelScope) and international (OpenAI, Gemini, Claude, OpenRouter, Groq, Mistral, Grok). Choosing one fills in the address; after getting the model list a light model is picked; keys are remembered per service.
 - Each service's switch for turning off "thinking" is sent automatically; services that reject extra parameters get a plain request instead.

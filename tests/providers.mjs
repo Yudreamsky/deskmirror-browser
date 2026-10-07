@@ -19,8 +19,9 @@ try {
   await sleep(1500);
   const groups = await p.eval(`[...document.querySelectorAll('#preset optgroup')].map((g) => g.label + ' ' + g.children.length)`);
   check(groups.length === 5, '服务分组：' + groups.join('，'));
-  const pick = async (pid) => p.eval(`(async () => { const sel = document.getElementById('preset'); sel.value = ${JSON.stringify(pid)};
-    sel.dispatchEvent(new Event('change')); await new Promise((r) => setTimeout(r, 2500));
+  const pick = async (pid, wait = 2500) => p.eval(`(async () => { const sel = document.getElementById('preset'); sel.value = ${JSON.stringify(pid)};
+    sel.dispatchEvent(new Event('change')); await new Promise((r) => setTimeout(r, ${wait}));
+    for (let i = 0; i < 60 && /正在/.test(document.getElementById('modelMsg').textContent); i++) await new Promise((r) => setTimeout(r, 500));
     const $ = (i) => document.getElementById(i);
     return { base: $('baseUrl').value, model: $('model').value, keyShown: !$('keyRow').hidden, note: $('presetNote').hidden ? '' : $('presetNote').textContent,
       site: $('site').hidden ? '' : $('site').href, msg: $('modelMsg').textContent, models: $('models').hidden ? 0 : $('models').options.length - 1,
@@ -35,7 +36,8 @@ try {
   const ol = await pick('ollama');
   check(!ol.keyShown && ol.models > 0 && /在列表里/.test(ol.msg), `本机 Ollama：不要 Key，拉到 ${ol.models} 个模型，“${ol.msg}”`);
   const oc = await pick('ollama-cloud-local');
-  check(!oc.keyShown && oc.models > 0 && /cloud$/.test(oc.model), `Ollama 云端（经本机）：只列云端 ${oc.models} 个，自动选了 ${oc.model}`);
+  check(!oc.keyShown && oc.models > 0 && /cloud$/.test(oc.model) && /能用/.test(oc.msg),
+    `Ollama 云端（经本机）：列出云端 ${oc.models} 个，试出能用的 ${oc.model}（${oc.msg.slice(0, 120)}）`);
   await p.shot(path.join(ROOT, 'tests/out/providers.png'));
   // 按服务商记 Key：DeepSeek 填一个假 Key 保存，换到智谱再换回来，Key 还在；智谱那里是空的
   const keys = await p.eval(`(async () => { const $ = (i) => document.getElementById(i); const sel = $('preset');
