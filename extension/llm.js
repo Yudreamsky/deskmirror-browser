@@ -21,6 +21,16 @@
     return new Error('服务返回错误 HTTP ' + res.status + (detail ? ' ' + detail : ''));
   }
 
+  /** fetch 本身失败（服务没开、地址写错、断网）时给一句看得懂的话。 */
+  async function post(url, init, what) {
+    try {
+      return await fetch(url, init);
+    } catch (e) {
+      if (init.signal && init.signal.aborted) throw e;
+      throw new Error('连不上' + what + '（' + url.replace(/\/(api\/chat|chat\/completions)$/, '') + '）');
+    }
+  }
+
   async function* lines(res) {
     const reader = res.body.getReader();
     const dec = new TextDecoder();
@@ -55,8 +65,8 @@
       const body = { model: cfg.model, messages, stream: true, think: false, keep_alive: '30m',
         options: { temperature: 0.2, num_ctx: 4096 } };
       for (let attempt = 0; attempt < 2; attempt++) {
-        const res = await fetch(base + '/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body), signal });
+        const res = await post(base + '/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body), signal }, ' Ollama，它开着吗');
         if (!res.ok) {
           const text = await res.text().catch(() => '');
           if (attempt === 0 && res.status === 400 && /think/i.test(text)) {
@@ -82,7 +92,7 @@
       const body = { model: cfg.model, messages, stream: true, temperature: 0.2 };
       if (!noThinkingParam.has(base)) body.thinking = { type: 'disabled' };
       for (let attempt = 0; attempt < 2; attempt++) {
-        const res = await fetch(base + '/chat/completions', { method: 'POST', headers, body: JSON.stringify(body), signal });
+        const res = await post(base + '/chat/completions', { method: 'POST', headers, body: JSON.stringify(body), signal }, '翻译服务');
         if (!res.ok) {
           if (attempt === 0 && body.thinking && (res.status === 400 || res.status === 422)) {
             delete body.thinking;   // 可能不认这个参数：去掉重发一次，成功就记住这个服务
