@@ -1,13 +1,8 @@
 // 桌面魔镜浏览器版：设置页。界面语言跟“母语”：中文母语中文界面，其他英文界面（和桌面版一样）。
 const T = window.__dm.text;
 const LLM = window.__dm.llm;
-
-const PRESETS = {
-  ollama: { protocol: 'ollama', baseUrl: 'http://127.0.0.1:11434', model: 'gemma4:12b' },
-  deepseek: { protocol: 'openai', baseUrl: 'https://api.deepseek.com', model: 'deepseek-flash' },
-  openai: { protocol: 'openai', baseUrl: '', model: '' },
-  mock: { protocol: 'mock', baseUrl: '', model: '' },
-};
+const PS = window.__dm.presets;
+const preset = (id) => PS.byId[id] || PS.byId['openai-custom'];
 const DEFAULTS = { preset: 'ollama', protocol: 'ollama', baseUrl: 'http://127.0.0.1:11434', model: 'gemma4:12b', apiKey: '',
   source: 'auto' };
 
@@ -22,12 +17,11 @@ const TEXT = {
     source: '原文', target: '译成',
     dirHint: '指定原文后只翻这种文字（比如日文网页上的英文菜单就不翻）。镜框标签上的语言按钮也能随时切换，选了马上按新方向重翻；这里改了，打开着的魔镜也会跟着换。',
     service: '翻译服务', svcLabel: '服务',
-    svc_ollama: '本机 Ollama（免费，文字不出本机）',
-    svc_openai: '其他 OpenAI 兼容接口（通义千问、硅基流动、LM Studio……）',
-    svc_mock: '测试用假翻译（不联网，只看排版）',
     baseUrl: '服务地址', apiKey: 'API Key',
     keyHint: 'Key 只存在这台电脑的 Chrome 扩展存储里（不像桌面版那样用 Windows 账户加密），只发给上面这个服务地址。',
-    model: '模型', fetch: '拉取模型', save: '保存', test: '测试连接',
+    model: '模型', fetch: '拉取模型', save: '保存', test: '测试连接', site: '开通 / 获取 Key ↗', modelHint: '例如 {m}',
+    m_auto: '已自动选了 {m}（轻量、适合翻译），可以从列表里换；记得点“保存”', m_cloudOnly: '只列出 :cloud 云端模型（本机 Ollama 要先登录账号）',
+    m_permFirst: '点“拉取模型”列出可用模型（第一次会请求访问这个地址的权限）',
     m_needUrl: '先填服务地址', m_needKey: '先填 API Key', m_noPerm: '没有拿到访问这个地址的权限',
     m_fetching: '正在拉取……', m_empty: '服务没有返回模型列表，请手动填写模型名', m_pick: '从 {n} 个模型里选一个……',
     m_inList: '当前模型 {m} 在列表里', m_notInList: '当前填的 {m} 不在服务的模型列表里，请从列表里选一个',
@@ -57,12 +51,12 @@ const TEXT = {
     source: 'Original', target: 'Translate into',
     dirHint: 'With a specific original language, only text in that language is translated (for example, English menus on a Japanese page stay as they are). The language button on the mirror\'s tab switches directions any time and re-translates right away; changes here apply to open mirrors too.',
     service: 'Translation service', svcLabel: 'Service',
-    svc_ollama: 'Ollama on this PC (free; text stays on this PC)',
-    svc_openai: 'Other OpenAI-compatible API (Qwen, SiliconFlow, LM Studio, …)',
-    svc_mock: 'Fake translation for testing (offline, layout only)',
     baseUrl: 'Address', apiKey: 'API key',
     keyHint: 'The key is kept only in Chrome\'s extension storage on this PC (not encrypted with your Windows account like the desktop app) and is sent only to the address above.',
-    model: 'Model', fetch: 'Get models', save: 'Save', test: 'Test connection',
+    model: 'Model', fetch: 'Get models', save: 'Save', test: 'Test connection', site: 'Sign up / get a key ↗', modelHint: 'e.g. {m}',
+    m_auto: 'Picked {m} (light and good for translation); you can choose another from the list. Remember to click Save',
+    m_cloudOnly: 'Only :cloud models are listed (sign in to Ollama on this PC first)',
+    m_permFirst: 'Click "Get models" to list the models (the first time Chrome asks for access to this address)',
     m_needUrl: 'Fill in the address first', m_needKey: 'Fill in the API key first', m_noPerm: 'No permission to access this address',
     m_fetching: 'Getting the model list…', m_empty: 'The service returned no models; type the model name yourself',
     m_pick: 'Pick one of {n} models…', m_inList: '{m} is available',
@@ -112,6 +106,20 @@ function render() {
     }));
     sel.value = value;
   };
+  const cur = $('preset').value || saved.preset;
+  $('preset').replaceChildren(...PS.GROUPS.map(([g, zh, en]) => {
+    const og = document.createElement('optgroup');
+    og.label = lang === 'zh' ? zh : en;
+    for (const p of PS.PRESETS.filter((x) => x.group === g)) {
+      const o = document.createElement('option');
+      o.value = p.id;
+      o.textContent = p.name[lang === 'zh' ? 0 : 1];
+      og.appendChild(o);
+    }
+    return og;
+  }));
+  if (cur) $('preset').value = cur;
+  show($('preset').value);
   const natives = Object.keys(T.NATIVE_NAMES).map((k) => [k, T.NATIVE_NAMES[k]]);
   fill($('native'), natives, $('native').value || saved.native);
   fill($('target'), natives, $('target').value || saved.target);
@@ -119,16 +127,28 @@ function render() {
   showVersion();
 }
 
-function show(preset) {
-  $('fields').hidden = preset === 'mock';
-  $('keyRow').hidden = preset === 'ollama';
+function show(id) {
+  const p = preset(id);
+  $('fields').hidden = p.protocol === 'mock';
+  $('keyRow').hidden = !p.key;
+  const note = p.note ? p.note[lang === 'zh' ? 0 : 1] : '';
+  $('presetNote').textContent = note;
+  $('presetNote').hidden = !note;
+  $('site').hidden = !p.site;
+  if (p.site) {
+    $('site').href = p.site;
+    $('site').textContent = t('site') + '  ' + p.site.replace(/^https?:\/\//, '');
+  }
+  $('model').placeholder = p.hint ? t('modelHint', { m: p.hint }) : '';
 }
 
 function read() {
-  const preset = $('preset').value;
+  const id = $('preset').value;
+  const p = preset(id);
   return {
-    preset,
-    protocol: PRESETS[preset].protocol,
+    preset: id,
+    protocol: p.protocol,
+    extra: p.extra || null,
     baseUrl: $('baseUrl').value.trim(),
     model: $('model').value.trim(),
     apiKey: $('apiKey').value.trim(),
@@ -180,17 +200,19 @@ async function fetchModels(ask) {
   const s = read();
   if (s.protocol === 'mock') return;
   if (!s.baseUrl) return say('modelMsg', t('m_needUrl'), 'err');
-  if (s.protocol !== 'ollama' && !s.apiKey) return say('modelMsg', t('m_needKey'), 'err');
+  if (preset(s.preset).key && !s.apiKey) return say('modelMsg', t('m_needKey'), 'err');
   if (!(await permit(s.baseUrl, ask))) {
-    if (ask) say('modelMsg', t('m_noPerm'), 'err');
+    say('modelMsg', ask ? t('m_noPerm') : t('m_permFirst'), ask ? 'err' : '');
     return undefined;
   }
   const my = ++fetching;
   $('fetch').disabled = true;
   say('modelMsg', t('m_fetching'));
   try {
-    const list = await LLM.listModels(s);
+    let list = await LLM.listModels(s);
     if (my !== fetching) return undefined;
+    const cloudOnly = s.preset === 'ollama-cloud-local';
+    if (cloudOnly) list = list.filter((m) => /cloud$/.test(m.id));
     const sel = $('models');
     sel.replaceChildren();
     if (!list.length) {
@@ -212,9 +234,14 @@ async function fetchModels(ask) {
     const cur = $('model').value.trim();
     if (list.some((m) => m.id === cur)) {
       sel.value = cur;
-      say('modelMsg', t('m_inList', { m: cur }), 'ok');
+      say('modelMsg', t('m_inList', { m: cur }) + (cloudOnly ? '；' + t('m_cloudOnly') : ''), 'ok');
+    } else if (!cur) {
+      const pick = cloudOnly ? (list.find((m) => /flash|mini|air|lite|small/i.test(m.id)) || list[0]).id : PS.pickModel(list);
+      $('model').value = pick;
+      sel.value = pick;
+      say('modelMsg', t('m_auto', { m: pick }), 'ok');
     } else {
-      say('modelMsg', cur ? t('m_notInList', { m: cur }) : t('m_pickOne'), 'err');
+      say('modelMsg', t('m_notInList', { m: cur }), 'err');
     }
   } catch (e) {
     if (my === fetching) {
@@ -239,22 +266,27 @@ $('apiKey').addEventListener('change', () => fetchModels(false));
 
 // ------------------------------------------------------------------ 服务、保存、测试
 $('preset').addEventListener('change', () => {
-  const p = PRESETS[$('preset').value];
-  if (p.baseUrl || $('preset').value !== 'openai') {
+  const id = $('preset').value;
+  const p = preset(id);
+  if (id !== 'openai-custom') {
     $('baseUrl').value = p.baseUrl;
     $('model').value = p.model;
   }
+  // 每家的 Key 分开记：换过去显示那家记下的 Key，免得把这家的 Key 发给另一家
+  if (p.key) $('apiKey').value = (saved.keys && saved.keys[id]) || (id === saved.preset ? saved.apiKey || '' : '');
   $('models').hidden = true;
   say('modelMsg', '');
   say('result', '');
-  show($('preset').value);
-  if ($('preset').value === 'ollama' || $('apiKey').value.trim()) fetchModels(false);
+  show(id);
+  if (!p.key || $('apiKey').value.trim()) fetchModels(false);
 });
 
 $('save').addEventListener('click', async () => {
   const s = read();
   if (s.protocol !== 'mock' && !(await permit(s.baseUrl))) return say('result', t('r_noPermSave'), 'err');
-  await saveSettings(s);
+  const keys = Object.assign({}, saved.keys || {});
+  if (preset(s.preset).key) keys[s.preset] = s.apiKey;
+  await saveSettings(Object.assign(s, { keys }));
   return say('result', t('r_saved'), 'ok');
 });
 
@@ -371,7 +403,10 @@ async function load() {
   $('native').value = saved.native;
   $('target').value = saved.target;
   $('source').value = saved.source || 'auto';
-  $('preset').value = saved.preset in PRESETS ? saved.preset : 'openai';
+  // 0.2.0 以前“其他 OpenAI 兼容接口”叫 openai，现在 openai 是 OpenAI 官方
+  if (saved.preset === 'openai' && !/api\.openai\.com/.test(saved.baseUrl || '')) saved.preset = 'openai-custom';
+  if (!PS.byId[saved.preset]) saved.preset = saved.protocol === 'ollama' ? 'ollama' : saved.protocol === 'mock' ? 'mock' : 'openai-custom';
+  $('preset').value = saved.preset;
   $('baseUrl').value = saved.baseUrl;
   $('model').value = saved.model;
   $('apiKey').value = saved.apiKey;
@@ -380,7 +415,7 @@ async function load() {
   checkUpdate();
   // 第一次打开就把母语存下来（以后界面和译文都按它）
   if (!settings || !settings.native) saveSettings({ native: saved.native, target: saved.target });
-  if (saved.protocol !== 'mock' && (saved.protocol === 'ollama' || saved.apiKey)) fetchModels(false);
+  if (saved.protocol !== 'mock' && (!preset(saved.preset).key || saved.apiKey)) fetchModels(false);
 }
 
 // 镜框标签上换了语言方向，这里也跟着显示

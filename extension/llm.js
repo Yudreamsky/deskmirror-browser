@@ -6,7 +6,7 @@
 (function (root) {
   'use strict';
 
-  const noThinkingParam = new Set();   // 不认 thinking 参数的服务地址
+  const plainOnly = new Set();         // 不认附加参数（thinking、temperature 等）的服务地址：以后只发最基本的请求
   let uiLang = 'zh';                    // 错误提示用的界面语言（中文 / 英文）
 
   function setUiLang(lang) {
@@ -64,7 +64,8 @@
 
   /**
    * 翻译一批文字块。每段完整后回调 onSeg(i, text)；返回收到的段数。
-   * cfg: { protocol, baseUrl, model, apiKey }；req: { segments, target, context }
+   * cfg: { protocol, baseUrl, model, apiKey, extra }；req: { segments, source, target, context }
+   * extra 是各家关掉“思考”的参数（见 presets.js），服务不认的话去掉重发一次并记住。
    */
   async function translateBatch(T, cfg, req, onSeg, signal) {
     const base = trimBase(cfg.baseUrl);
@@ -78,9 +79,11 @@
     if (cfg.protocol === 'ollama') {
       const body = { model: cfg.model, messages, stream: true, think: false, keep_alive: '30m',
         options: { temperature: 0.2, num_ctx: 4096 } };
+      const headers = { 'Content-Type': 'application/json' };
+      if (cfg.apiKey) headers.Authorization = 'Bearer ' + cfg.apiKey;   // 直连 ollama.com 云端
       for (let attempt = 0; attempt < 2; attempt++) {
-        const res = await post(base + '/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body), signal }, 'ollama');
+        const res = await post(base + '/api/chat', { method: 'POST', headers, body: JSON.stringify(body), signal }, 'ollama');
+        if (res.status === 401 || res.status === 403) throw await errorOf(res);
         if (!res.ok) {
           const text = await res.text().catch(() => '');
           if (attempt === 0 && res.status === 400 && /think/i.test(text)) {
@@ -103,18 +106,20 @@
     } else {
       const headers = { 'Content-Type': 'application/json' };
       if (cfg.apiKey) headers.Authorization = 'Bearer ' + cfg.apiKey;
-      const body = { model: cfg.model, messages, stream: true, temperature: 0.2 };
-      if (!noThinkingParam.has(base)) body.thinking = { type: 'disabled' };
+      const plain = { model: cfg.model, messages, stream: true };
+      // DeepSeek、智谱、豆包等默认会“思考”，翻译用不着，关掉快得多也省钱（思考的字数按输出计费）；
+      // 有的模型只接受默认温度（OpenAI 的推理模型），不认的服务去掉这些参数重发一次并记住
+      const full = Object.assign({}, plain, { temperature: 0.2, thinking: { type: 'disabled' } }, cfg.extra || {});
       for (let attempt = 0; attempt < 2; attempt++) {
+        const body = attempt === 0 && !plainOnly.has(base) ? full : plain;
         const res = await post(base + '/chat/completions', { method: 'POST', headers, body: JSON.stringify(body), signal }, 'service');
         if (!res.ok) {
-          if (attempt === 0 && body.thinking && (res.status === 400 || res.status === 422)) {
-            delete body.thinking;   // 可能不认这个参数：去掉重发一次，成功就记住这个服务
+          if (body === full && (res.status === 400 || res.status === 422)) {
+            plainOnly.add(base);
             continue;
           }
           throw await errorOf(res);
         }
-        if (attempt === 1) noThinkingParam.add(base);
         for await (const line of lines(res)) {
           if (!line.startsWith('data:')) continue;
           const data = line.slice(5).trim();
@@ -143,7 +148,7 @@
     const base = trimBase(cfg.baseUrl);
     if (!base) throw new Error(msg('还没有填写服务地址', 'No service address yet'));
     if (cfg.protocol === 'ollama') {
-      const res = await post(base + '/api/tags', { method: 'GET' }, 'ollama');
+      const res = await post(base + '/api/tags', { method: 'GET', headers: cfg.apiKey ? { Authorization: 'Bearer ' + cfg.apiKey } : {} }, 'ollama');
       if (!res.ok) throw await errorOf(res);
       const j = await res.json();
       return (j.models || []).map((m) => ({

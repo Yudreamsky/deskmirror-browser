@@ -14,7 +14,9 @@ const rect = { x: rx, y: ry, w: rw, h: rh };
 async function main() {
   const server = await serve();
   const url = /^https?:/.test(target) ? target : server.url(target);
-  const browser = await launch({ width: 1280, height: 860 });
+  const headful = process.argv.includes('--headful');
+  const browser = await launch({ width: 1280, height: 860, headless: !headful, args: headful ? ['--window-position=-2400,0',
+    '--disable-features=CalculateNativeWinOcclusion', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding'] : [] });
   const mode = process.argv.includes('--zh') ? 'zh' : 'identity';
   const page = await openPage(browser, { translate: mockTranslator(mode), verbose: false });
   try {

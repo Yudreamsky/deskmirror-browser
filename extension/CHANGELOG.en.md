@@ -1,5 +1,10 @@
 # DeskMirror for browsers · Changes
 
+## 0.3.0 (2026-10-07)
+- Many more translation services: on this PC (Ollama, LM Studio), subscriptions (Ollama Cloud and the coding plans of Zhipu GLM, Kimi Code, Alibaba Model Studio, Volcano Ark and MiniMax), pay-as-you-go in China (DeepSeek, Qwen, Zhipu, Kimi, MiniMax, Doubao, SiliconFlow, Hunyuan, Qianfan, StepFun, ModelScope) and international (OpenAI, Gemini, Claude, OpenRouter, Groq, Mistral, Grok). Choosing one fills in the address; after getting the model list a light model is picked; keys are remembered per service.
+- Each service's switch for turning off "thinking" is sent automatically; services that reject extra parameters get a plain request instead.
+- Fixed: some sites insert styles by script, and part of them (padding and similar) was lost when copied (a browser limitation when reading such rules), so the mirror's content was shifted by tens of pixels (Vimeo and others). The page's computed values are now restored.
+
 ## 0.2.1 (2026-10-07)
 - Fixed: on pages whose whole layout scrolls inside a container that also holds a fixed sidebar (such as the Tavily dashboard), the sidebar inside the mirror moved with the content after scrolling.
 

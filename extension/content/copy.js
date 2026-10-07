@@ -59,6 +59,29 @@
     try { cdoc.open(); } catch (e) { /* 没办法了，按怪异模式 */ }
   }
 
+  /**
+   * Chrome 的 CSSOM 有个缺陷：简写属性里用了 var()、后面又单独改了其中一项（如 padding: var(--a); padding-right: 0），
+   * 读出来的文字里其余几项就成了空值（padding-top: ;），原值再也读不回来。CSS-in-JS（Emotion 等）插入的规则只能这样读，
+   * 复制品里就少了这些声明。这里把这类规则记下来（选择器 + 丢了的属性），之后按真网页算好的值补到复制品元素上。
+   */
+  function findBroken(rules, sink, root) {
+    if (!sink) return;
+    const walk = (rs, depth) => {
+      for (const r of rs) {
+        if (r.style && r.selectorText !== undefined) {
+          let props = null;
+          for (let i = 0; i < r.style.length; i++) {
+            const n = r.style[i];
+            if (!n.startsWith('--') && r.style.getPropertyValue(n) === '') (props = props || []).push(n);
+          }
+          if (props && !r.selectorText.includes('&')) sink.push({ sel: r.selectorText, props, root });
+        }
+        if (r.cssRules && depth < 4) walk(r.cssRules, depth + 1);
+      }
+    };
+    try { walk(rules, 0); } catch (e) { /* 读不到 */ }
+  }
+
   function rulesText(rules) {
     let out = '';
     for (const r of rules) out += r.cssText + '\n';
@@ -144,6 +167,7 @@
       this._listen(window, document);
       cdoc.addEventListener('load', () => this._afterLoad(), true);
 
+      this.fixBroken();
       this._syncAllScroll();
       this._scanFixed(document.documentElement);
       this.refreshHoles();
@@ -378,6 +402,7 @@
         try {
           const n = new this.cwin.CSSStyleSheet({ media: s.media.mediaText });
           n.replaceSync(rulesText(s.cssRules));
+          findBroken(s.cssRules, this._brokenSink(), null);
           out.push(n);
         } catch (e) { /* 读不到 */ }
       }
@@ -395,6 +420,7 @@
           // CSS-in-JS 常用 insertRule 往空的 <style> 里塞规则，文字内容里看不到
           if (!text.trim() && n) {
             this.styles.set(orig, { n, cssom: true });
+            findBroken(rules, this._brokenSink(), orig.getRootNode());
             return rulesText(rules);
           }
         }
@@ -418,7 +444,10 @@
           info.cssom = true;
           const c = this.map.get(orig);
           try {
-            if (c && orig.sheet) c.textContent = rulesText(orig.sheet.cssRules);
+            if (c && orig.sheet) {
+              c.textContent = rulesText(orig.sheet.cssRules);
+              findBroken(orig.sheet.cssRules, this._brokenSink(), orig.getRootNode());
+            }
           } catch (e) { /* 跨域 */ }
           info.n = n;
           this._hoverDirty = true;
@@ -427,6 +456,65 @@
       if (this._hoverDirty) {
         this._hoverDirty = false;
         this._hoverSheet();
+      }
+      if (this._brokenDirty) this.fixBroken();
+    }
+
+    // ---------------------------------------------------------------- 补回 CSSOM 读丢的声明
+    _brokenSink() {
+      this._brokenDirty = true;
+      if (!this.broken) this.broken = new Map();   // 选择器 → { props:Set, root }
+      const self = this;
+      return { push(b) {
+        const key = b.sel + '\u0001' + (b.root && b.root !== document ? 'shadow' : 'doc');
+        let e = self.broken.get(key);
+        if (!e) self.broken.set(key, (e = { sel: b.sel, props: new Set(), roots: new Set() }));
+        for (const p of b.props) e.props.add(p);
+        e.roots.add(b.root && b.root.nodeType === 11 ? b.root : document);
+      } };
+    }
+
+    /** 命中这些规则的元素：按真网页上算好的值写到复制品元素的行内样式上（锁大小等加了 !important 的不受影响）。 */
+    fixBroken() {
+      this._brokenDirty = false;
+      if (!this.broken || !this.broken.size) return;
+      const t0 = performance.now();
+      const LOCKED = /^(width|height|min-width|min-height|max-width|max-height|flex|flex-grow|flex-shrink|flex-basis|display|visibility|opacity)$/;
+      let budget = 4000;
+      this.fixedUp = this.fixedUp || new WeakMap();
+      for (const e of this.broken.values()) {
+        // 伪元素（::before）没法用行内样式补
+        if (/::|:(before|after|first-line|first-letter|marker|placeholder|selection)\b/.test(e.sel)) continue;
+        for (const root of e.roots) {
+          let els;
+          try { els = root.querySelectorAll(e.sel); } catch (err) { continue; }
+          for (const el of els) {
+            if (--budget < 0) break;
+            const ce = this.map.get(el);
+            if (!ce || ce.nodeType !== 1) continue;
+            const cs = getComputedStyle(el);
+            let done = this.fixedUp.get(ce);
+            if (!done) this.fixedUp.set(ce, (done = new Set()));
+            for (const p of e.props) {
+              if (LOCKED.test(p)) continue;
+              const v = cs.getPropertyValue(p);
+              if (v && ce.style.getPropertyValue(p) !== v) ce.style.setProperty(p, v);
+              done.add(p);
+            }
+          }
+        }
+      }
+      this.stats.brokenMs = (this.stats.brokenMs || 0) + performance.now() - t0;
+    }
+
+    /** 真网页那边重设了 style 属性，复制品跟着重设后，补上去的值要重新写。 */
+    _refix(orig, c) {
+      const done = this.fixedUp && this.fixedUp.get(c);
+      if (!done) return;
+      const cs = getComputedStyle(orig);
+      for (const p of done) {
+        const v = cs.getPropertyValue(p);
+        if (v) c.style.setProperty(p, v);
       }
     }
 
@@ -522,6 +610,8 @@
       }
       for (const p of parents) this.syncChildren(p);
       if (parents.size) this._holesDirty = true;
+      // 结构或 class 变了，命中“读丢了值”的规则的元素可能变了，稍后重补一次
+      if (this.broken && this.broken.size && (parents.size || attrs.length)) this._brokenDirty = true;
       if (this.compositorSync && this.cwin) {
         for (const n of added) if (n.nodeType === 1 && n.isConnected) this._scanFixed(n);
         this._recheckFixed(attrs);
@@ -587,6 +677,7 @@
       const tag = orig.localName;
       if (name === 'style' && !ns) {
         c.style.cssText = orig.style ? orig.style.cssText : '';
+        this._refix(orig, c);
         if (tag.includes('-')) this._pin(orig, c);
         if (REPLACED.has(tag)) this._sizeReplaced(orig, c);
         this._emit('styleReset', orig, c);

@@ -36,6 +36,8 @@
   .msg.ok { color: var(--ok); } .msg.err { color: var(--err); }
   .banner { background: var(--note); border: 1px solid var(--blue); border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; }
   .notes { margin: 6px 0 0; padding-left: 20px; }
+  #presetNote { color: #b45309; }
+  a { color: var(--blue); }
   ul { margin: 6px 0 0; padding-left: 20px; }
   kbd { font: 12px monospace; padding: 1px 5px; border: 1px solid var(--line); border-radius: 4px; }
   [hidden] { display: none !important; }
@@ -70,12 +72,9 @@
   <div class="card">
     <h2 data-t="service"></h2>
     <label for="preset" data-t="svcLabel"></label>
-    <select id="preset">
-      <option value="ollama" data-t="svc_ollama"></option>
-      <option value="deepseek">DeepSeek</option>
-      <option value="openai" data-t="svc_openai"></option>
-      <option value="mock" data-t="svc_mock"></option>
-    </select>
+    <select id="preset"></select>
+    <div class="hint" id="presetNote" hidden></div>
+    <div class="hint"><a id="site" href="#" target="_blank" rel="noopener" hidden></a></div>
     <div id="fields">
       <label for="baseUrl" data-t="baseUrl"></label>
       <input id="baseUrl" spellcheck="false">
@@ -116,6 +115,7 @@
   </div>
 </main>
 <script src="content/text.js"></script>
+<script src="presets.js"></script>
 <script src="llm.js"></script>
 <script src="options.js"></script>
 </body>

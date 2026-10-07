@@ -271,8 +271,10 @@
     const startWithSettings = () => {
       chrome.storage.local.get('settings').then(({ settings }) => {
         const st = settings || {};
-        // 本机 Ollama 一次一批（显卡排队），云端服务三批并发
-        DM.config = Object.assign({ concurrency: (st.protocol || 'ollama') === 'ollama' ? 1 : 3 }, st);
+        // 本机 Ollama 跑本地模型时一次一批（显卡排队）；云端服务（包括 Ollama 的云端模型）三批并发
+        const local = (st.protocol || 'ollama') === 'ollama' && /127\.0\.0\.1|localhost/.test(st.baseUrl || 'http://127.0.0.1')
+          && !/cloud$/.test(st.model || '');
+        DM.config = Object.assign({ concurrency: local ? 1 : 3 }, st);
         DM.start();
       });
     };
