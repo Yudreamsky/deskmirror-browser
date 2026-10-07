@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>promo</title>
+<!-- 商店小宣传图 440×280：promo.html?lang=zh 或 ?lang=en，用 tools/store-assets.mjs 截成 PNG -->
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 440px; height: 280px; overflow: hidden; }
+  body { background: linear-gradient(135deg, #18222d 0%, #22344a 100%); color: #fff;
+    font-family: "Microsoft YaHei UI", "Segoe UI", system-ui, sans-serif; position: relative; }
+  .page { position: absolute; left: 26px; top: 38px; width: 178px; height: 206px; background: #fbfaf7; border-radius: 8px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, .35); padding: 16px 14px; overflow: hidden; }
+  .page .h { height: 11px; width: 78%; background: #2b3138; border-radius: 3px; margin-bottom: 10px; }
+  .page .l { height: 6px; background: #c9cfd6; border-radius: 3px; margin: 7px 0; }
+  .frame { position: absolute; left: 40px; top: 94px; width: 196px; height: 112px; border: 2px solid #3d8bfd; border-radius: 1px;
+    background: #fbfaf7; box-shadow: 0 0 0 4px rgba(61, 139, 253, .18); }
+  .frame .c { position: absolute; width: 7px; height: 7px; background: #3d8bfd; }
+  .frame .tab { position: absolute; left: -2px; top: -20px; height: 18px; padding: 0 8px; background: #1f2530; color: #e8edf5;
+    font-size: 10px; line-height: 18px; border-radius: 4px 4px 0 0; white-space: nowrap; }
+  .frame .tab b { margin-right: 6px; }
+  .frame .tab span { color: #78dc8c; }
+  .frame .t { position: absolute; left: 12px; right: 12px; color: #2b3138; font-size: 11.5px; line-height: 1.55; }
+  .text { position: absolute; left: 262px; top: 64px; right: 18px; }
+  .icon { width: 44px; height: 44px; border-radius: 10px; background: #3d8bfd; color: #fff; font-size: 30px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; margin-bottom: 14px; box-shadow: 0 4px 12px rgba(61, 139, 253, .45); }
+  .title { font-size: 31px; font-weight: 700; letter-spacing: 1px; line-height: 1.15; }
+  .sub { font-size: 17px; color: #c6d3e2; margin-top: 8px; line-height: 1.3; }
+  .tags { font-size: 11.5px; color: #8fa3b8; margin-top: 14px; line-height: 1.5; }
+  body.en .title { font-size: 28px; letter-spacing: 0; }
+  body.en .sub { font-size: 15px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="h"></div>
+  <div class="l" style="width: 96%"></div><div class="l" style="width: 88%"></div><div class="l" style="width: 92%"></div>
+  <div class="l" style="width: 70%"></div><div class="l" style="width: 94%"></div><div class="l" style="width: 85%"></div>
+  <div class="l" style="width: 90%"></div><div class="l" style="width: 60%"></div><div class="l" style="width: 93%"></div>
+  <div class="l" style="width: 82%"></div><div class="l" style="width: 88%"></div><div class="l" style="width: 74%"></div>
+  <div class="l" style="width: 91%"></div><div class="l" style="width: 66%"></div>
+</div>
+<div class="frame">
+  <div class="tab"><b id="tm">魔镜</b><span id="ts">就绪</span></div>
+  <div class="c" style="left:-4px;top:-4px"></div><div class="c" style="right:-4px;top:-4px"></div>
+  <div class="c" style="left:-4px;bottom:-4px"></div><div class="c" style="right:-4px;bottom:-4px"></div>
+  <div class="t" id="tx" style="top: 9px"></div>
+</div>
+<div class="text">
+  <div class="icon">镜</div>
+  <div class="title" id="title"></div>
+  <div class="sub" id="sub"></div>
+  <div class="tags" id="tags"></div>
+</div>
+<script>
+  const en = new URLSearchParams(location.search).get('lang') === 'en';
+  document.body.classList.toggle('en', en);
+  const T = en ? {
+    title: 'DeskMirror', sub: 'Translate web pages in place', tags: 'Same layout, fonts and links<br>Local or cloud AI models',
+    tm: 'Mirror', ts: 'Ready', tx: 'Unlike a river, a glacier does not need a channel. It makes its own, scraping the bedrock like sandpaper.',
+  } : {
+    title: '桌面魔镜', sub: '网页原位翻译', tags: '排版、字体、链接都不变<br>本机模型或云端大模型',
+    tm: '魔镜', ts: '就绪', tx: '冰川和河流不同，它不需要河道，而是自己开辟道路：冻在底部的岩石像砂纸一样刮过基岩。',
+  };
+  for (const k of Object.keys(T)) document.getElementById(k).innerHTML = T[k];
+</script>
+</body>
+</html>

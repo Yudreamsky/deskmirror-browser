@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>上架填写清单</title>
+<style>
+  :root { color-scheme: light dark; --bg: #fff; --card: #f6f7f9; --line: #d8dce2; --ink: #1f2328; --muted: #667080; --blue: #3d8bfd;
+    --ok: #15803d; --warn: #b45309; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #1b1d22; --card: #23262c; --line: #3a3f47; --ink: #e6e8eb; --muted: #9aa3af; --ok: #4ade80; --warn: #fbbf24; }
+  }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.65 "Microsoft YaHei UI", "PingFang SC", system-ui, sans-serif; }
+  main { max-width: 860px; margin: 28px auto 60px; padding: 0 16px; }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  h2 { font-size: 17px; margin: 0 0 12px; }
+  .sub { color: var(--muted); margin: 0 0 20px; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; margin-bottom: 16px; }
+  .field { margin: 14px 0; }
+  .label { font-weight: 700; display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+  .label .where { font-weight: 400; color: var(--muted); font-size: 13px; }
+  pre { white-space: pre-wrap; word-break: break-word; margin: 0; padding: 10px 12px; background: var(--bg); border: 1px solid var(--line);
+    border-radius: 6px; font: 13px/1.6 "Microsoft YaHei UI", "PingFang SC", system-ui, sans-serif; max-height: 260px; overflow: auto; }
+  button.copy { margin-left: auto; padding: 3px 12px; border-radius: 6px; border: 1px solid var(--blue); background: var(--blue); color: #fff;
+    font: inherit; font-size: 12px; cursor: pointer; }
+  button.copy.done { background: var(--ok); border-color: var(--ok); }
+  .pick { padding: 8px 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; }
+  .pick b { color: var(--blue); }
+  .note { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .warn { color: var(--warn); }
+  .imgs { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+  .imgs figure { margin: 0; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+  .imgs img { width: 100%; height: auto; display: block; border-radius: 4px; background: #fff; }
+  .imgs img.icon { width: 64px; margin: 8px auto; }
+  .imgs figcaption { font-size: 12px; color: var(--muted); margin-top: 6px; overflow-wrap: anywhere; }
+  .imgs figcaption b { color: var(--ink); }
+  code { font: 12.5px Consolas, monospace; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
+  ol.steps { margin: 6px 0 0; padding-left: 20px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Chrome 应用商店 · 填写清单（桌面魔镜 0.4.0）</h1>
+  <p class="sub">一边开着开发者后台，一边开着这一页：文字点“复制”再粘贴进对应的框；图片从
+    <code>F:\AI\Claude\deskmirror-browser\store\images</code> 上传。扩展的名字和一句话简介来自 zip 包本身，后台里不用填。</p>
+
+  <section>
+    <h2>① 商品详情（Store listing）</h2>
+    <p class="note">后台这一页顶部可以切换语言：英语是默认语言，另外还有简体中文、繁体中文，三种语言各填一份“说明”。</p>
+
+    <div class="field">
+      <div class="label">说明 · 简体中文 <span class="where">切到“中文（简体）”时填</span><button class="copy" data-for="d-zh">复制</button></div>
+<pre id="d-zh">桌面魔镜把译文放回原文的位置。
+
+在网页上打开一块可以拖动、可以调整大小的“镜子”：镜框里是同一位置的译文，排版、字体、颜色、图片和链接都和原网页一样；镜框外照常是原网页。哪一句对应哪一句，一眼就能看出来。
+
+【怎么用】
+• 点工具栏上的“镜”图标，或按 Alt+Shift+M，在当前网页打开魔镜；再按一次关掉。
+• 拖动镜子上方的深色标签移动，拖蓝色边框调整大小。
+• 镜子里的链接、按钮、输入框照常能点，点到的就是下面的真网页。
+• 按住 Ctrl+Alt+O 临时看原文；点标签上的语言按钮随时换翻译方向。
+
+【翻译服务随你选】
+• 本机模型：Ollama、LM Studio（免费，文字不出这台电脑）
+• Ollama 云端模型
+• DeepSeek、通义千问（阿里云百炼）、智谱 GLM、Kimi、MiniMax、豆包（火山方舟）、硅基流动、腾讯混元、百度千帆、阶跃星辰、魔搭
+• OpenAI、Google Gemini、Anthropic Claude、OpenRouter、Groq、Mistral、xAI Grok，以及其他 OpenAI 兼容接口
+填好 API Key 后点“拉取模型”，自动列出能用的模型，并挑一个适合翻译的。
+
+【备用阵列】
+可以同时排好几个翻译服务。前一个额度用完、Key 不对、模型下线、连不上或太慢时，自动换下一个，已经译好的段落不重翻；镜框标签上会显示正在用哪个备用。
+
+【语言】
+原文可以自动识别，也可以指定英文、中文、日文、韩文、印尼文；可以译成简体中文、繁体中文、英文、日文、韩文、印尼文。界面跟着你的母语（中文或英文）。
+
+【隐私】
+• 不用注册账号，没有开发者自己的服务器，不统计、不追踪。
+• 网页文字只发给你自己选的翻译服务；用本机模型时，文字不离开这台电脑。
+• API Key 只保存在这台电脑的浏览器里，只发给对应的翻译服务。
+
+【说明】
+• 只翻网页上的文字；图片里的字、视频里烧进去的字幕不翻。
+• Chrome 自带的 PDF 阅读器、chrome:// 页面和应用商店页面里打不开魔镜。
+• 想翻译电脑上的任何软件、游戏和视频字幕，可以试试 Windows 桌面版：https://github.com/Yudreamsky/deskmirror
+
+免费使用，所有功能都能用。意见反馈：a885187@gmail.com</pre>
+    </div>
+
+    <div class="field">
+      <div class="label">说明 · English <span class="where">默认语言（英语）时填</span><button class="copy" data-for="d-en">复制</button></div>
+<pre id="d-en">DeskMirror puts the translation right where the original text is.
+
+Open a "mirror" on any web page, then drag or resize it as you like. Inside the frame, the same spot of the page appears translated, with the page's own layout, fonts, colors, images and links. Outside the frame, the page stays as it is, so you can always tell which sentence is which.
+
+HOW TO USE
+• Click the mirror icon in the toolbar, or press Alt+Shift+M, to open the mirror on the current page; press again to close it.
+• Drag the dark tab above the mirror to move it; drag the blue border to resize it.
+• Links, buttons and input boxes inside the mirror still work: clicks go to the real page underneath.
+• Hold Ctrl+Alt+O to peek at the original; click the language button on the tab to switch directions.
+
+CHOOSE YOUR TRANSLATION SERVICE
+• Models on your own computer: Ollama, LM Studio (free; the text never leaves your PC)
+• Ollama Cloud models
+• OpenAI, Google Gemini, Anthropic Claude, OpenRouter, Groq, Mistral, xAI Grok, DeepSeek, Qwen (Alibaba Model Studio), Zhipu GLM, Moonshot Kimi, MiniMax, Doubao, SiliconFlow and other OpenAI-compatible APIs
+After you enter an API key, "Get models" lists the models you can use and picks one that suits translation.
+
+BACKUP SERVICES
+Line up several services. When one runs out of credit, has a wrong key, retires a model, can't be reached or is too slow, the next one takes over without redoing finished text. The mirror's tab shows which backup is in use.
+
+LANGUAGES
+The original language is detected automatically, or you can pick English, Chinese, Japanese, Korean or Indonesian. Translate into Simplified Chinese, Traditional Chinese, English, Japanese, Korean or Indonesian. The interface is in English or Chinese.
+
+PRIVACY
+• No account and no developer server; no analytics or tracking.
+• Page text is sent only to the translation service you choose; with a local model it never leaves your computer.
+• API keys are stored only in this browser on your computer and sent only to their own service.
+
+NOTES
+• Only text on the page is translated, not text inside images or subtitles burned into videos.
+• The mirror can't open in Chrome's built-in PDF viewer, on chrome:// pages or in the Web Store.
+• To translate any app, game or video subtitles on your screen, try the Windows desktop version: https://github.com/Yudreamsky/deskmirror
+
+Free, with every feature included. Feedback: a885187@gmail.com</pre>
+    </div>
+
+    <div class="field">
+      <div class="label">說明 · 繁體中文 <span class="where">切到“中文（繁体）”时填</span><button class="copy" data-for="d-tw">复制</button></div>
+<pre id="d-tw">桌面魔鏡把譯文放回原文的位置。
+
+在網頁上開一塊可以拖曳、可以調整大小的「鏡子」：鏡框裡是同一位置的譯文，排版、字型、顏色、圖片和連結都和原網頁一樣；鏡框外照常是原網頁。哪一句對應哪一句，一眼就能看出來。
+
+【怎麼用】
+• 點工具列上的「鏡」圖示，或按 Alt+Shift+M，在目前的網頁開啟魔鏡；再按一次關閉。
+• 拖曳鏡子上方的深色標籤來移動，拖曳藍色邊框調整大小。
+• 鏡子裡的連結、按鈕、輸入框照常能點，點到的就是下面的真網頁。
+• 按住 Ctrl+Alt+O 暫時看原文；點標籤上的語言按鈕隨時切換翻譯方向。
+
+【翻譯服務自由選】
+• 本機模型：Ollama、LM Studio（免費，文字不離開這台電腦）
+• Ollama 雲端模型
+• OpenAI、Google Gemini、Anthropic Claude、OpenRouter、Groq、Mistral、xAI Grok、DeepSeek、通義千問、智譜 GLM、Kimi、MiniMax 等，以及其他 OpenAI 相容介面
+填好 API Key 後點「拉取模型」，自動列出可用的模型，並挑一個適合翻譯的。
+
+【備用陣列】
+可以同時排好幾個翻譯服務。前一個額度用完、Key 不對、模型下線、連不上或太慢時，自動換下一個，已經譯好的段落不重翻；鏡框標籤上會顯示正在用哪個備用。
+
+【語言】
+原文可以自動辨識，也可以指定英文、中文、日文、韓文、印尼文；可以譯成簡體中文、繁體中文、英文、日文、韓文、印尼文。介面跟著你的母語（中文或英文）。
+
+【隱私】
+• 不用註冊帳號，沒有開發者自己的伺服器，不統計、不追蹤。
+• 網頁文字只傳給你自己選的翻譯服務；用本機模型時，文字不離開這台電腦。
+• API Key 只儲存在這台電腦的瀏覽器裡，只傳給對應的翻譯服務。
+
+【說明】
+• 只翻譯網頁上的文字；圖片裡的字、影片裡燒進去的字幕不翻。
+• Chrome 內建的 PDF 閱讀器、chrome:// 頁面和線上應用程式商店頁面裡無法開啟魔鏡。
+• 想翻譯電腦上的任何軟體、遊戲和影片字幕，可以試試 Windows 桌面版：https://github.com/Yudreamsky/deskmirror
+
+免費使用，所有功能都能用。意見回饋：a885187@gmail.com</pre>
+    </div>
+
+    <div class="field">
+      <div class="label">类别（Category）</div>
+      <div class="pick">选 <b>生产效率 → 工具</b>（Productivity → Tools）</div>
+    </div>
+    <div class="field">
+      <div class="label">语言（Language）</div>
+      <div class="pick">选 <b>中文（简体）</b>。主要用户是中文母语；英文、繁体中文的说明在上面各填一份</div>
+    </div>
+
+    <div class="field">
+      <div class="label">图片 <span class="where">文件在 store\images 里</span></div>
+      <div class="imgs">
+        <figure><img class="icon" src="images/icon-128.png" alt=""><figcaption><b>商店图标</b> 128×128：icon-128.png（如果后台已经从 zip 里读到图标，可以不传）</figcaption></figure>
+        <figure><img src="images/1-mirror-zh.png" alt=""><figcaption><b>截图 1</b>：1-mirror-zh.png（英文网页 → 中文）</figcaption></figure>
+        <figure><img src="images/2-mirror-en.png" alt=""><figcaption><b>截图 2</b>：2-mirror-en.png（中文网页 → 英文）</figcaption></figure>
+        <figure><img src="images/3-settings-zh.png" alt=""><figcaption><b>截图 3</b>：3-settings-zh.png（设置：备用阵列，中文界面）</figcaption></figure>
+        <figure><img src="images/4-settings-en.png" alt=""><figcaption><b>截图 4</b>：4-settings-en.png（设置：备用阵列，英文界面）</figcaption></figure>
+        <figure><img src="images/promo-440x280-zh.png" alt=""><figcaption><b>小型宣传图块</b> 440×280：promo-440x280-zh.png</figcaption></figure>
+        <figure><img src="images/promo-440x280-en.png" alt=""><figcaption><b>小型宣传图块</b> 440×280：promo-440x280-en.png</figcaption></figure>
+      </div>
+      <ol class="steps">
+        <li>简体、繁体中文：截图按 1、3、2 的顺序传，宣传图传 promo-440x280-zh.png。</li>
+        <li>英语（默认）：截图按 2、4、1 的顺序传，宣传图传 promo-440x280-en.png。</li>
+        <li>如果后台只让传一套图片（不分语言），就传 1、2、3、4 和中文宣传图。大型宣传图（1400×560）和宣传视频可以不填。</li>
+      </ol>
+    </div>
+
+    <div class="field">
+      <div class="label">首页网址（Homepage URL，可选）<button class="copy" data-for="home">复制</button></div>
+<pre id="home">https://github.com/Yudreamsky/deskmirror</pre>
+      <div class="note">这是桌面版的主页；浏览器版没有单独的主页，不想填可以空着。“官方网址”“支持网址”空着就行，反馈邮箱已经写在说明里。</div>
+    </div>
+    <div class="field">
+      <div class="label">成人内容（Mature content）</div>
+      <div class="pick">选 <b>否</b></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>② 隐私权（Privacy practices）</h2>
+    <p class="note">审核员看英文最顺，所以理由用英文；每个框下面是中文意思。</p>
+
+    <div class="field">
+      <div class="label">单一用途说明（Single purpose）<button class="copy" data-for="p-single">复制</button></div>
+<pre id="p-single">Translates the text of the current web page in place: inside a movable frame that the user places on the page, the page's text is shown translated in its original layout, using the translation service the user chooses.</pre>
+      <div class="note">把当前网页的文字原位翻译：在用户放的可移动镜框里，用用户选的翻译服务，按原排版显示译文。</div>
+    </div>
+
+    <div class="field">
+      <div class="label">activeTab 的理由<button class="copy" data-for="p-active">复制</button></div>
+<pre id="p-active">Used only after the user clicks the toolbar icon or presses the keyboard shortcut, to show the translation frame on the current tab. The extension does nothing on any page until the user does this.</pre>
+      <div class="note">只在用户点图标或按快捷键后，在当前标签页显示镜框；用户不操作就不碰任何网页。</div>
+    </div>
+
+    <div class="field">
+      <div class="label">scripting 的理由<button class="copy" data-for="p-script">复制</button></div>
+<pre id="p-script">Injects the extension's own bundled scripts (no remote code) into the current tab when the user clicks the toolbar icon or presses the shortcut. These scripts build the translation frame and find the text to translate.</pre>
+      <div class="note">用户点图标或按快捷键时，把扩展自带的脚本（不从网上加载代码）放进当前标签页，用来画镜框、找要翻译的文字。</div>
+    </div>
+
+    <div class="field">
+      <div class="label">storage 的理由<button class="copy" data-for="p-storage">复制</button></div>
+<pre id="p-storage">Saves the user's settings on this computer: languages, the list of translation services, and the API keys the user enters for them. A short-lived note of which service recently failed is kept in session storage and cleared when the browser closes.</pre>
+      <div class="note">在这台电脑上保存设置：语言、翻译服务列表、用户填的 API Key；哪个服务刚出过错只记在会话存储里，关浏览器就清空。</div>
+    </div>
+
+    <div class="field">
+      <div class="label">主机权限的理由（Host permissions）<button class="copy" data-for="p-host">复制</button></div>
+<pre id="p-host">http://127.0.0.1/* and http://localhost/*: send page text to a translation model running on the user's own computer (Ollama, LM Studio). https://api.deepseek.com/*: one of the built-in translation services. Optional https://*/* and http://*/*: requested at runtime only when the user adds a translation service at another address (for example OpenAI, Google Gemini or a custom endpoint), and used only for that address. Page text is sent only to the service the user configured.</pre>
+      <div class="note">本机地址：请求这台电脑上的模型；api.deepseek.com：内置的翻译服务之一；其他网址（可选权限）：只在用户添加该网址的翻译服务时才申请，只用于这个网址。</div>
+    </div>
+
+    <div class="field">
+      <div class="label">是否使用远程代码（Remote code）</div>
+      <div class="pick">选 <b>否，我未使用远程代码</b>（No, I am not using remote code）</div>
+    </div>
+
+    <div class="field">
+      <div class="label">数据使用（Data usage）</div>
+      <div class="pick">勾选 <b>网站内容</b>（Website content：网页文字会发给用户选的翻译服务）和 <b>身份验证信息</b>（Authentication information：用户填的 API Key，只存本机、只发给对应服务）。其他类别都不勾。<br>
+        下面三条声明 <b>全部勾选</b>：不出售给第三方；不用于与单一用途无关的目的；不用于判断信用或贷款。</div>
+    </div>
+
+    <div class="field">
+      <div class="label">隐私权政策网址（Privacy policy URL）</div>
+      <div class="pick warn">还没有网址。政策已经写好（store\privacy-policy.md，中英文），需要放到一个公开能打开的网址上，见我在对话里的说明。</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>③ 分发（Distribution）</h2>
+    <div class="field"><div class="label">付费</div><div class="pick">选 <b>免费</b>（不包含应用内购买）</div></div>
+    <div class="field"><div class="label">公开范围（Visibility）</div><div class="pick">选 <b>公开</b>。想先只给自己和朋友试，就选 <b>不公开</b>（有链接的人才能装，以后可以改成公开）</div></div>
+    <div class="field"><div class="label">地区</div><div class="pick">选 <b>所有地区</b></div></div>
+  </section>
+
+  <section>
+    <h2>④ 测试说明（Test instructions，建议填）</h2>
+    <div class="field">
+      <div class="label">给审核员的说明<button class="copy" data-for="t-notes">复制</button></div>
+<pre id="t-notes">No account is needed. The extension translates with a service the reviewer chooses; Settings opens automatically after installation.
+
+Option A (free, local): install Ollama from https://ollama.com, run "ollama pull gemma4:12b", and keep the default service "Ollama on this PC".
+Option B: in Settings choose any listed provider (for example OpenAI or Google Gemini), paste an API key, click "Test connection", then "Save".
+
+Then open any English article (for example https://en.wikipedia.org/wiki/Glacier) and click the toolbar icon or press Alt+Shift+M. A blue frame appears; inside it, the page text is replaced by the translation in the same layout. Drag the dark tab to move the frame, drag the border to resize it, and hold Ctrl+Alt+O to see the original.</pre>
+      <div class="note">用户名、密码两栏空着。审核员没有 Key 也能用本机 Ollama 试；要不要另外给审核员一个测试用的 Key，由你决定（我不会用你的 Key）。</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>⑤ 最后</h2>
+    <ol class="steps">
+      <li>每一页填完点 <b>保存草稿</b>。</li>
+      <li>隐私权政策网址填好后，左上角会显示还缺什么；都齐了再点 <b>提交审核</b>（这一步你自己点）。</li>
+      <li>审核一般几天。通过后会按“公开范围”上架；以后更新：改版本号 → <code>node tools\pack.mjs</code> → 在“软件包”页上传新 zip → 提交。</li>
+    </ol>
+  </section>
+</main>
+<script>
+  for (const b of document.querySelectorAll('button.copy')) {
+    b.addEventListener('click', async () => {
+      const text = document.getElementById(b.dataset.for).textContent;
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (e) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        ta.remove();
+      }
+      b.textContent = '已复制';
+      b.classList.add('done');
+      setTimeout(() => { b.textContent = '复制'; b.classList.remove('done'); }, 1500);
+    });
+  }
+</script>
+</body>
+</html>
