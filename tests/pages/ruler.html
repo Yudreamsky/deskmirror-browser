@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ruler</title>
+<style>
+  body { margin: 0; background: #fff; font: 12px/1 monospace; }
+  .rl { position: absolute; left: 0; right: 0; height: 2px; background: #000; }
+  .tall { position: relative; height: 12000px; }
+</style>
+</head>
+<body>
+<div class="tall" id="t"></div>
+<script>
+  // 间距不规则的横线（12–31 px），这样比较两边的偏移不会被周期混淆
+  const t = document.getElementById('t');
+  let y = 10, k = 1;
+  while (y < 11900) {
+    const d = document.createElement('div');
+    d.className = 'rl';
+    d.style.top = y + 'px';
+    t.appendChild(d);
+    k = (k * 1103515245 + 12345) % 2147483648;
+    y += 12 + (k >> 16) % 20;
+  }
+</script>
+</body>
+</html>

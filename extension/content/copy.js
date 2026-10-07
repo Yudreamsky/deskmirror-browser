@@ -52,7 +52,9 @@
       this.hovered = new Set();
       this.focused = new Set();
       this.listeners = { change: [], styleReset: [] };
-      this.stats = { buildMs: 0, nodes: 0, mutBatches: 0, mutMs: 0, maxMutMs: 0 };
+      this.fixed = new Map();           // 真网页上 position:fixed 的元素 → 复制品里给它的反向补偿动画
+      this.stats = { buildMs: 0, nodes: 0, mutBatches: 0, mutMs: 0, maxMutMs: 0, fixedMs: 0 };
+      this.compositorSync = shell.compositorSync !== false;
       this._raf = 0;
       this._frames = 0;
       this._holesDirty = true;
@@ -70,8 +72,23 @@
       frame.setAttribute('aria-hidden', 'true');
       frame.setAttribute('tabindex', '-1');
       frame.className = 'sheet';
+      // 层次：clip（按开口裁剪，视口坐标）→ base（主线程同步的滚动量）→ ty / tx（合成器按真网页滚动量反向平移）→ iframe
+      const mk = (cls) => {
+        const d = document.createElement('div');
+        d.className = cls;
+        return d;
+      };
+      this.clip = mk('clip');
+      this.base = mk('base');
+      this.ty = mk('ty');
+      this.tx = mk('tx');
+      this.clip.appendChild(this.base);
+      this.base.appendChild(this.ty);
+      this.ty.appendChild(this.tx);
+      this.tx.appendChild(frame);
       this.frame = frame;
-      this.shell.root.appendChild(frame);
+      if (this.compositorSync) this.base.classList.add('live');
+      this.shell.root.appendChild(this.clip);
       this._sizeFrame();
       const cdoc = frame.contentDocument;
       // 保持和原网页同样的排版模式（标准 / 有限怪异 / 怪异模式），否则排版会不一样
@@ -95,6 +112,7 @@
       cdoc.addEventListener('load', () => this._afterLoad(), true);
 
       this._syncAllScroll();
+      this._scanFixed(document.documentElement);
       this.refreshHoles();
       this._tick = this._tick.bind(this);
       this._raf = requestAnimationFrame(this._tick);
@@ -106,14 +124,17 @@
       if (this.observer) this.observer.disconnect();
       for (const off of this._offs || []) off();
       clearInterval(this._shadowTimer);
-      if (this.frame) this.frame.remove();
+      for (const a of [this._animY, this._animX, ...this.fixed.values()]) if (a) a.cancel();
+      this.fixed.clear();
+      if (this.clip) this.clip.remove();
       this.frame = null;
     }
 
     _sizeFrame() {
-      const st = this.frame.style;
-      st.width = window.innerWidth + 'px';
-      st.height = window.innerHeight + 'px';
+      for (const el of [this.frame, this.clip]) {
+        el.style.width = window.innerWidth + 'px';
+        el.style.height = window.innerHeight + 'px';
+      }
     }
 
     _observe(target) {
@@ -446,6 +467,18 @@
       }
       for (const p of parents) this.syncChildren(p);
       if (parents.size) this._holesDirty = true;
+      if (this.compositorSync && this.cwin) {
+        for (const n of added) if (n.nodeType === 1 && n.isConnected) this._scanFixed(n);
+        this._recheckFixed(attrs);
+        // 被重新复制的元素换了对应节点，动画要跟着换
+        for (const [el, anim] of this.fixed) {
+          if (this.map.get(el) !== anim.effect.target) {
+            anim.cancel();
+            this.fixed.delete(el);
+            if (el.isConnected) this._fix(el);
+          }
+        }
+      }
       this.stats.mutBatches++;
       const ms = performance.now() - t0;
       this.stats.mutMs += ms;
@@ -549,11 +582,152 @@
       this._emit('change', { scroll: true });
     }
 
+    /**
+     * 整页滚动的跟随。真网页是合成器线程直接滚的，主线程（我们的脚本）要晚一帧才知道，
+     * 光靠脚本把复制品滚过去，快速滚动时开口里会慢一帧、错开十几二十像素。
+     * 所以复制品的位置由两部分相加：base 平移 +S（脚本设的、复制品实际滚到的位置），
+     * ty/tx 平移 −S'（滚动驱动动画，合成器每帧按真网页当时的滚动量算）。两者之差正好补上那一帧。
+     */
     syncDocScroll() {
       const w = this.cwin;
       if (!w) return;
       const x = window.scrollX, y = window.scrollY;
       if (w.scrollX !== x || w.scrollY !== y) w.scrollTo(x, y);
+      if (!this.compositorSync) return;
+      const bx = w.scrollX, by = w.scrollY;
+      const moved = bx !== this._bx || by !== this._by;
+      if (moved) {
+        this._bx = bx;
+        this._by = by;
+        this.base.style.transform = `translate(${bx}px, ${by}px)`;
+      }
+      if (this._timelines() || moved) this._fixedKeyframes();
+    }
+
+    _timelines() {
+      if (typeof ScrollTimeline !== 'function') return false;
+      const se = document.scrollingElement || document.documentElement;
+      const maxY = Math.max(0, se.scrollHeight - se.clientHeight);
+      const maxX = Math.max(0, se.scrollWidth - se.clientWidth);
+      const changed = maxY !== this._maxY;
+      if (maxY !== this._maxY) {
+        this._maxY = maxY;
+        const kf = [{ transform: 'translateY(0px)' }, { transform: `translateY(${-maxY}px)` }];
+        if (this._animY) this._animY.effect.setKeyframes(kf);
+        else {
+          this._animY = this.ty.animate(kf, {
+            timeline: new ScrollTimeline({ source: se, axis: 'block' }), fill: 'both', easing: 'linear',
+          });
+        }
+      }
+      if (maxX !== this._maxX) {
+        this._maxX = maxX;
+        const kf = [{ transform: 'translateX(0px)' }, { transform: `translateX(${-maxX}px)` }];
+        if (this._animX) this._animX.effect.setKeyframes(kf);
+        else {
+          this._animX = this.tx.animate(kf, {
+            timeline: new ScrollTimeline({ source: se, axis: 'inline' }), fill: 'both', easing: 'linear',
+          });
+        }
+      }
+      return changed;
+    }
+
+    // ---------------------------------------------------------------- 固定元素
+    /**
+     * 整张复制品随滚动补偿平移时，复制品里的固定元素（顶栏、浮动按钮）也会跟着晃。
+     * 给它们加一个反向的平移动画，时间轴用真网页的滚动条（跨文档也能由合成器驱动），正好抵消。
+     */
+    _scanFixed(root) {
+      if (!this.compositorSync || typeof ScrollTimeline !== 'function') return;
+      const t0 = performance.now();
+      const walk = (start) => {
+        const tw = document.createTreeWalker(start, NodeFilter.SHOW_ELEMENT, {
+          acceptNode: (el) => {
+            if (el === this.shell.host) return NodeFilter.FILTER_REJECT;
+            const cs = getComputedStyle(el);
+            if (cs.display === 'none') return NodeFilter.FILTER_REJECT;
+            if (cs.position === 'fixed') {
+              this._fix(el);
+              return NodeFilter.FILTER_REJECT;   // 里面的跟着它走
+            }
+            return NodeFilter.FILTER_SKIP;
+          },
+        });
+        while (tw.nextNode()) { /* acceptNode 里处理 */ }
+      };
+      walk(root);
+      for (const sr of this.shadows.keys()) if (sr.host && root.contains(sr.host)) walk(sr);
+      this.stats.fixedMs += performance.now() - t0;
+    }
+
+    _fix(el) {
+      if (this.fixed.has(el)) return;
+      // 祖先有 transform、filter 之类时，fixed 其实相对那个祖先定位、跟着内容滚，不用补偿
+      for (let a = el.parentElement; a && a !== document.documentElement; a = a.parentElement) {
+        const cs = getComputedStyle(a);
+        if (cs.transform !== 'none' || cs.filter !== 'none' || cs.perspective !== 'none' || cs.backdropFilter !== 'none'
+            || /paint|layout|strict|content/.test(cs.contain) || /transform|filter|perspective/.test(cs.willChange)) return;
+      }
+      const c = this.map.get(el);
+      if (!c || c.nodeType !== 1) return;
+      const se = document.scrollingElement || document.documentElement;
+      // 不用 composite:'add'（那样合成器跑不了，又会慢一帧）；元素自己的 translate 直接算进关键帧
+      const base = this._baseTranslate(el);
+      try {
+        const anim = c.animate(this._fixedFrames(base), {
+          timeline: new this.cwin.ScrollTimeline({ source: se, axis: 'block' }), fill: 'both', easing: 'linear',
+        });
+        anim.dmBase = base;
+        this.fixed.set(el, anim);
+      } catch (e) { /* 老浏览器没有跨文档时间轴 */ }
+    }
+
+    _baseTranslate(el) {
+      const t = getComputedStyle(el).translate;
+      if (!t || t === 'none') return ['0px', '0px', ''];
+      const parts = t.split(' ');
+      return [parts[0], parts[1] || '0px', parts[2] || ''];
+    }
+
+    _fixedFrames(base) {
+      const sy = this._by || 0, max = this._maxY || 0;
+      const at = (dy) => `${base[0]} calc(${base[1]} + ${dy}px)${base[2] ? ' ' + base[2] : ''}`;
+      return [{ translate: at(-sy) }, { translate: at(max - sy) }];
+    }
+
+    _fixedKeyframes() {
+      if (!this.fixed.size) return;
+      for (const [el, anim] of this.fixed) {
+        if (!el.isConnected || this.map.get(el) !== anim.effect.target) {
+          anim.cancel();
+          this.fixed.delete(el);
+          continue;
+        }
+        anim.effect.setKeyframes(this._fixedFrames(anim.dmBase));
+      }
+    }
+
+    /** 元素的 position 可能因为改了 class/style 变成 fixed 或不再 fixed，变化过的元素重新查一下。 */
+    _recheckFixed(els) {
+      if (!this.compositorSync) return;
+      for (const el of els) {
+        if (el.nodeType !== 1 || !el.isConnected) continue;
+        const anim = this.fixed.get(el);
+        const isFixed = getComputedStyle(el).position === 'fixed';
+        if (anim && !isFixed) {
+          anim.cancel();
+          this.fixed.delete(el);
+        } else if (!anim && isFixed) {
+          this._fix(el);
+        } else if (anim) {
+          const base = this._baseTranslate(el);
+          if (base.join() !== anim.dmBase.join()) {
+            anim.dmBase = base;
+            anim.effect.setKeyframes(this._fixedFrames(base));
+          }
+        }
+      }
     }
 
     _syncAllScroll() {

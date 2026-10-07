@@ -32,7 +32,8 @@ async function main() {
     const vp = await page.eval('({ w: innerWidth, h: innerHeight, mode: document.compatMode })');
     const rect = { x: 300, y: 120, w: 700, h: 560 };
     const t0 = Date.now();
-    const started = await page.eval(`(() => { const s = __dm.start({ rect: ${JSON.stringify(rect)}, target: 'zh-Hans', concurrency: ${cmd === 'real' ? 1 : 3} });
+    const sync = cmd === 'identity' && !has('--sync') ? 'false' : 'true';
+    const started = await page.eval(`(() => { const s = __dm.start({ rect: ${JSON.stringify(rect)}, target: 'zh-Hans', concurrency: ${cmd === 'real' ? 1 : 3}, compositorSync: ${sync} });
       return { startMs: s.startMs, nodes: s.copy.stats.nodes, buildMs: s.copy.stats.buildMs, units: s.units.stats.units, scanMs: s.units.stats.scanMs }; })()`);
     console.log(`页面 ${vp.w}x${vp.h} ${vp.mode}；启动 ${started.startMs.toFixed(0)} ms（复制 ${started.nodes} 个节点 ${started.buildMs.toFixed(0)} ms，找到 ${started.units} 块 ${started.scanMs.toFixed(0)} ms）`);
     const ok = await page.settle(cmd === 'real' ? 240000 : 30000);
@@ -43,10 +44,10 @@ async function main() {
 
     const base = path.join(OUT, `${cmd}-${nameOf(url)}`);
     const withMirror = decodePNG(await page.shot(base + '-mirror.png'));
-    await page.eval(`__dm.session.copy.frame.classList.add('peek')`);
+    await page.eval(`__dm.session.copy.clip.classList.add('peek')`);
     await sleep(120);
     const plain = decodePNG(await page.shot(base + '-plain.png'));
-    await page.eval(`__dm.session.copy.frame.classList.remove('peek')`);
+    await page.eval(`__dm.session.copy.clip.classList.remove('peek')`);
 
     if (cmd === 'identity') {
       const d = diffImages(withMirror, plain, rect);

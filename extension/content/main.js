@@ -111,6 +111,7 @@
     const cfg = Object.assign({ target: 'zh-Hans', concurrency: 2 }, DM.config || {}, opts || {});
     const t0 = performance.now();
     const shell = makeShell();
+    shell.compositorSync = cfg.compositorSync !== false;
     const copy = new DM.LiveCopy(shell);
     copy.build();
     const s = { cfg, shell, copy, clip: '', clipDirty: true, frames: 0 };
@@ -151,7 +152,7 @@
       }
       const v = `path(evenodd, "${d}")`;
       if (v !== s.clip) {
-        copy.frame.style.clipPath = v;
+        copy.clip.style.clipPath = v;
         s.clip = v;
       }
     };
@@ -167,12 +168,12 @@
     const setPaused = (on) => {
       s.units.setPaused(on);
       frame.setPaused(on);
-      copy.frame.classList.toggle('off', on);
+      copy.clip.classList.toggle('off', on);
     };
     s.setPaused = setPaused;
 
     // 按住 Ctrl+Alt+O 看原文（和桌面版一样）
-    const peek = (on) => copy.frame && copy.frame.classList.toggle('peek', on);
+    const peek = (on) => copy.clip && copy.clip.classList.toggle('peek', on);
     s.onKey = (e) => {
       if (e.type === 'keydown' && e.ctrlKey && e.altKey && e.code === 'KeyO') {
         peek(true);

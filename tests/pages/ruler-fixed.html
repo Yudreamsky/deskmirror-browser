@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ruler with a fixed bar and an inner scroller</title>
+<style>
+  body { margin: 0; background: #fff; font: 12px/1 monospace; }
+  .rl { position: absolute; left: 0; right: 0; height: 2px; background: #000; }
+  .tall { position: relative; height: 12000px; }
+  .bar { position: fixed; top: 0; left: 0; right: 0; height: 90px; background: #fff; z-index: 5; }
+  .bar .rl { background: #000; }
+  .pane { position: fixed; left: 0; right: 0; top: 520px; height: 220px; overflow: auto; background: #fff; z-index: 6; border-top: 1px solid #888; }
+  .pane .inner { position: relative; height: 6000px; }
+</style>
+</head>
+<body>
+<div class="tall" id="t"></div>
+<div class="bar" id="bar"></div>
+<div class="pane" id="pane"><div class="inner" id="inner"></div></div>
+<script>
+  function lines(host, from, to, seed) {
+    let y = from, k = seed;
+    while (y < to) {
+      const d = document.createElement('div');
+      d.className = 'rl';
+      d.style.top = y + 'px';
+      host.appendChild(d);
+      k = (k * 1103515245 + 12345) % 2147483648;
+      y += 12 + (k >> 16) % 20;
+    }
+  }
+  lines(document.getElementById('t'), 10, 11900, 1);
+  lines(document.getElementById('bar'), 6, 84, 7);
+  lines(document.getElementById('inner'), 10, 5900, 3);
+</script>
+</body>
+</html>

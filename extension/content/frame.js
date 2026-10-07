@@ -11,10 +11,12 @@
   const MIN_H = 48;
 
   DM.FRAME_CSS = `
-:host { all: initial !important; }
-.sheet { position: fixed; left: 0; top: 0; border: 0; margin: 0; padding: 0; display: block;
-  pointer-events: none; background: transparent; clip-path: inset(50%); }
-.sheet.peek, .sheet.off { visibility: hidden; }
+:host { all: initial; }
+.clip { position: fixed; left: 0; top: 0; pointer-events: none; clip-path: inset(50%); }
+.clip.peek, .clip.off { visibility: hidden; }
+.base { position: absolute; left: 0; top: 0; }
+.base.live, .base.live .ty, .base.live .tx { will-change: transform; }
+.sheet { border: 0; margin: 0; padding: 0; display: block; pointer-events: none; background: transparent; }
 .line { position: fixed; box-sizing: border-box; border: ${LINE}px solid ${BLUE}; pointer-events: none; }
 .corner { position: fixed; width: 9px; height: 9px; background: ${BLUE}; pointer-events: none; }
 .band { position: fixed; pointer-events: auto; background: rgba(0, 0, 0, 0.004); }
