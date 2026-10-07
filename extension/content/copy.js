@@ -78,7 +78,8 @@
       this.focused = new Set();
       this.listeners = { change: [], styleReset: [] };
       this.fixed = new Map();           // 真网页上 position:fixed 的元素 → 复制品里给它的反向补偿动画
-      this.inner = new Map();           // 页面里单独滚动的元素 → 子元素的补偿动画
+      this.inner = new Map();           // 页面里单独滚动的元素 → 补偿动画
+      this.fixedAll = new Set();        // 真网页上所有 position:fixed 的元素（包括不用补偿的）
       this.stats = { buildMs: 0, nodes: 0, mutBatches: 0, mutMs: 0, maxMutMs: 0, fixedMs: 0 };
       this.compositorSync = shell.compositorSync !== false;
       this._raf = 0;
@@ -707,17 +708,45 @@
      * 时间轴用真网页这个区域的滚动条：平移 = 复制品实际滚到的位置 − 合成器当下的位置。
      * 子元素太多（长列表直接挂在滚动区域下）就不补偿，免得几百个图层。
      */
+    /**
+     * 滚动区域里要加补偿的元素。注意：祖先一旦有平移，里面 position:fixed 的元素就改成相对这个祖先定位、
+     * 跟着内容滚了（侧边栏会跟着正文跑）。所以含有固定元素的那一支不整个平移，往下拆开，只平移不含固定元素的部分；
+     * 固定元素自己本来就不随滚动走，不用管。
+     */
+    _innerTargets(t) {
+      const out = [];
+      const fixedInside = (el) => {
+        for (const f of this.fixedAll) if (f !== el && el.contains(f)) return true;
+        return false;
+      };
+      const visit = (el, depth) => {
+        for (const ch of el.children) {
+          if (this.fixedAll.has(ch)) continue;
+          if (fixedInside(ch)) {
+            if (depth > 8 || !visit(ch, depth + 1)) return false;
+            continue;
+          }
+          const cc = this.map.get(ch);
+          if (cc && cc.nodeType === 1 && cc.isConnected) out.push(cc);
+          if (out.length > 40) return false;
+        }
+        return true;
+      };
+      return visit(t, 0) ? out : null;
+    }
+
     _innerSync(t, c) {
       const vert = t.scrollHeight - t.clientHeight >= t.scrollWidth - t.clientWidth;
       let st = this.inner.get(t);
-      const kids = c.children;
-      if (st && (st.skip ? st.n === kids.length : st.kids.length === kids.length && st.kids.every((k, i) => k.el === kids[i])
+      const kids = this._innerTargets(t) || [];
+      const n = kids.length;
+      if (st && (st.skip ? st.n === n : st.kids.length === n && st.kids.every((k, i) => k.el === kids[i])
           && st.vert === vert)) {
         if (st.skip) return;
       } else {
         if (st && st.kids) for (const k of st.kids) k.anim.cancel();
-        if (!kids.length || kids.length > 40 || typeof ScrollTimeline !== 'function') {
-          this.inner.set(t, { skip: true, n: kids.length });
+        if (!n || typeof ScrollTimeline !== 'function') {
+          this.inner.set(t, { skip: true, n });
           return;
         }
         st = { vert, kids: [], s: null, max: null };
@@ -753,6 +782,8 @@
     _scanFixed(root) {
       if (!this.compositorSync || typeof ScrollTimeline !== 'function') return;
       const t0 = performance.now();
+      const scrollers = [];
+      const before = this.fixedAll.size;
       const walk = (start) => {
         const tw = document.createTreeWalker(start, NodeFilter.SHOW_ELEMENT, {
           acceptNode: (el) => {
@@ -760,15 +791,13 @@
             const cs = getComputedStyle(el);
             if (cs.display === 'none') return NodeFilter.FILTER_REJECT;
             if (cs.position === 'fixed') {
+              this.fixedAll.add(el);
               this._fix(el);
               return NodeFilter.FILTER_REJECT;   // 里面的跟着它走
             }
-            // 顺便把页面里能单独滚动的区域的补偿先准备好
-            if (/auto|scroll|overlay/.test(cs.overflowY + cs.overflowX)
-                && (el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth)) {
-              const c = this.map.get(el);
-              if (c) this._innerSync(el, c);
-            }
+            // 页面里能单独滚动的区域（也包括 overflow:hidden、靠脚本滚的），扫完再准备补偿
+            if (/auto|scroll|overlay|hidden/.test(cs.overflowY + cs.overflowX)
+                && (el.scrollHeight > el.clientHeight + 1 || el.scrollWidth > el.clientWidth + 1)) scrollers.push(el);
             return NodeFilter.FILTER_SKIP;
           },
         });
@@ -776,7 +805,18 @@
       };
       walk(root);
       for (const sr of this.shadows.keys()) if (sr.host && root.contains(sr.host)) walk(sr);
+      if (this.fixedAll.size !== before) this._resetInner();
+      for (const el of scrollers) {
+        const c = this.map.get(el);
+        if (c && /auto|scroll|overlay/.test(getComputedStyle(el).overflowY + getComputedStyle(el).overflowX)) this._innerSync(el, c);
+      }
       this.stats.fixedMs += performance.now() - t0;
+    }
+
+    /** 固定元素有增减：滚动区域的补偿全部撤掉，下次滚动时按新的结构重建。 */
+    _resetInner() {
+      for (const st of this.inner.values()) for (const k of st.kids || []) k.anim.cancel();
+      this.inner.clear();
     }
 
     _fix(el) {
@@ -833,6 +873,11 @@
         if (el.nodeType !== 1 || !el.isConnected) continue;
         const anim = this.fixed.get(el);
         const isFixed = getComputedStyle(el).position === 'fixed';
+        if (isFixed !== this.fixedAll.has(el)) {
+          if (isFixed) this.fixedAll.add(el);
+          else this.fixedAll.delete(el);
+          this._resetInner();
+        }
         if (anim && !isFixed) {
           anim.cancel();
           this.fixed.delete(el);

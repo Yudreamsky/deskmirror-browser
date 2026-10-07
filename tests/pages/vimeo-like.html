@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Echoic opener / ident · video page</title>
+<style>
+  /* 照 vimeo.com 视频页的结构：吸顶顶栏、网格布局、高度随窗口变的播放器、横幅、标题和简介、右栏评论区单独滚动 */
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.6 system-ui, sans-serif; background: #f2f3f5; color: #1a2e3b; }
+  .app { display: flex; flex-direction: column; position: relative; }
+  .shell { display: flex; flex-direction: column; }
+  header { position: sticky; top: 0; z-index: 10; height: 64px; display: flex; align-items: center; gap: 20px; padding: 0 24px;
+    background: #fff; border-bottom: 1px solid #e3e6ea; }
+  header b { font-size: 24px; }
+  header input { flex: 0 1 360px; padding: 8px 12px; border-radius: 18px; border: 1px solid #d0d5dc; background: #f4f5f7; }
+  .page { display: flex; position: relative; }
+  .grid { display: grid; width: 100%; padding: 0 24px 24px; gap: 24px; grid-template-columns: repeat(6, 1fr);
+    grid-template-areas: "media media media media media media" "main main main main side side" "more more more more side side"; }
+  .media { grid-area: media; height: 100%; z-index: 2; }
+  .player { width: 100%; height: 100vh; min-height: 420px; max-height: calc(100vh - 305px); aspect-ratio: 1920 / 1080; overflow: hidden;
+    background: radial-gradient(circle at 50% 50%, #3a3f4b, #0b0c10); display: grid; place-items: center; color: #8fd3ff; font: 700 42px system-ui; }
+  .stack { grid-area: main; display: flex; flex-direction: column; gap: 24px; }
+  .banner, main, .more, .side { position: relative; background: #fff; border-radius: 16px; padding: 20px 24px; }
+  .banner { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .banner button { padding: 8px 16px; border-radius: 8px; border: 0; background: #1a2e3b; color: #fff; }
+  h1 { margin: 0 0 6px; font-size: 32px; line-height: 1.3; }
+  .meta { color: #637381; font-size: 14px; }
+  .actions { display: flex; gap: 10px; margin: 14px 0; }
+  .actions span { padding: 8px 12px; border-radius: 8px; background: #edf0f3; }
+  .author { display: flex; align-items: center; gap: 10px; margin: 12px 0; font-weight: 600; }
+  .author i { width: 36px; height: 36px; border-radius: 50%; background: #2b5876; display: inline-block; }
+  .author em { font-style: normal; font-size: 12px; background: #1a2e3b; color: #fff; padding: 2px 8px; border-radius: 6px; }
+  .desc p { margin: 0; }
+  .more { grid-area: more; min-height: 900px; }
+  .side { grid-area: side; }
+  .comments { height: 450px; overflow: auto; }
+  .comments p { margin: 0 0 18px; }
+</style>
+</head>
+<body>
+<div id="__next">
+  <div class="app">
+    <div class="shell">
+      <header><b>vimeo</b><input placeholder="Search videos, people and more"><span>Log in</span><span>Join</span></header>
+      <div class="page">
+        <div class="grid">
+          <div class="media"><div class="player"><span>Echoic</span></div></div>
+          <div class="stack">
+            <div class="banner"><span>Everything you need to create, manage and share great videos.</span><button>Join for free</button></div>
+            <main>
+              <h1>Echoic opener / ident</h1>
+              <div class="meta">61.8K views · 13 years ago</div>
+              <div class="actions"><span>Share</span><span>Like 1,523</span><span>Collections</span><span>Watch later</span></div>
+              <div class="author"><i></i>Tim Borgmann <em>Follow</em></div>
+              <div class="desc">
+                <p>An opener / ident for Echoic (http://www.echoicaudio.com/)</p>
+                <p>Client: Echoic music &amp; sound design</p>
+                <p>Role: concept, design, direction, animation, shading, compositing</p>
+              </div>
+              <div class="meta">Uploaded on June 10, 2013 7:36 PM</div>
+            </main>
+          </div>
+          <div class="more"><h2>More from Tim Borgmann</h2><p>Abstract animations, studies in shape and motion, and title sequences.</p></div>
+          <div class="side"><h3>Comments 48</h3>
+            <div class="comments">
+              <p>Beautiful work, the motion is so smooth.</p><p>Love the sound design here.</p><p>How long did the render take?</p>
+              <p>Amazing shading and lighting.</p><p>This is incredible, great job!</p><p>The ending is perfect.</p>
+              <p>Inspiring as always.</p><p>What software did you use for this?</p><p>Superb compositing.</p>
+              <p>Fantastic detail in every frame.</p><p>The typography reveal is great.</p><p>Wow, just wow.</p>
+              <p>Very clean and elegant.</p><p>Great rhythm and pacing.</p><p>Stunning visuals.</p>
+              <p>Lovely colours.</p><p>Could watch this on repeat.</p><p>Top notch.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

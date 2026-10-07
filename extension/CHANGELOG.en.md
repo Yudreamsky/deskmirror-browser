@@ -1,5 +1,8 @@
 # DeskMirror for browsers · Changes
 
+## 0.2.1 (2026-10-07)
+- Fixed: on pages whose whole layout scrolls inside a container that also holds a fixed sidebar (such as the Tavily dashboard), the sidebar inside the mirror moved with the content after scrolling.
+
 ## 0.2.0 (2026-10-07)
 - "Get models" in Settings: after you enter the API key, the models the service offers are listed; click one to use it. The DeepSeek default is now deepseek-flash.
 - Pick "Your language" first: on first use it is guessed from the browser language; translations go into it by default and the interface follows it (Chinese for Chinese speakers, English for everyone else).
