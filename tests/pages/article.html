@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Field Notes: How Glaciers Shape Mountain Valleys</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { --accent: #b4532a; --ink: #22262b; --muted: #5d6670; --paper: #fbfaf7; }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; font: 17px/1.6 Georgia, "Times New Roman", serif; color: var(--ink); background: var(--paper); }
+  header.top { position: fixed; top: 0; left: 0; right: 0; height: 56px; background: #1f2d3a; color: #fff;
+    display: flex; align-items: center; gap: 28px; padding: 0 28px; z-index: 50; font-family: system-ui, sans-serif; font-size: 15px; }
+  header.top .logo { font-weight: 700; letter-spacing: .5px; }
+  header.top nav a { color: #d7e3ee; text-decoration: none; margin-right: 18px; }
+  header.top nav a:hover { color: #fff; text-decoration: underline; }
+  .wrap { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 40px; max-width: 1180px; margin: 0 auto; padding: 88px 28px 60px; }
+  aside.toc { position: sticky; top: 80px; align-self: start; font-family: system-ui, sans-serif; font-size: 14px; }
+  aside.toc h4 { margin: 0 0 8px; text-transform: uppercase; font-size: 12px; color: var(--muted); letter-spacing: 1px; }
+  aside.toc ol { margin: 0; padding-left: 18px; }
+  aside.toc li { margin: 6px 0; }
+  aside.toc a { color: var(--ink); }
+  main h1 { font-size: 40px; line-height: 1.15; margin: 0 0 12px; }
+  .lead { font-size: 21px; color: var(--muted); margin: 0 0 22px; }
+  .byline { font-family: system-ui, sans-serif; font-size: 14px; color: var(--muted); display: flex; gap: 12px; align-items: center; }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 10px; background: #e9efe3; color: #3d5a29; font-size: 12px; font-weight: 600; }
+  main a { color: var(--accent); }
+  main a:hover { background: #fde8d4; }
+  h2 { font-size: 27px; margin: 38px 0 10px; }
+  figure { margin: 26px 0; }
+  figure img { width: 100%; height: auto; display: block; border-radius: 6px; }
+  figcaption { font-size: 14px; color: var(--muted); margin-top: 6px; font-family: system-ui, sans-serif; }
+  blockquote { margin: 24px 0; padding: 4px 22px; border-left: 4px solid var(--accent); font-style: italic; color: #3b4148; }
+  table { border-collapse: collapse; width: 100%; font-family: system-ui, sans-serif; font-size: 15px; }
+  th, td { border-bottom: 1px solid #ddd; padding: 8px 10px; text-align: left; }
+  th { background: #f0ede6; }
+  .cards { display: flex; gap: 16px; margin: 20px 0; }
+  .card { flex: 1; background: #fff; border: 1px solid #e3ded4; border-radius: 8px; padding: 14px 16px; font-family: system-ui, sans-serif; }
+  .card h3 { margin: 0 0 6px; font-size: 17px; }
+  .card p { margin: 0 0 12px; font-size: 14px; color: var(--muted); }
+  .card button { font: inherit; font-size: 13px; padding: 5px 12px; border-radius: 6px; border: 1px solid #c9c2b4; background: #faf7f1; cursor: pointer; }
+  .card button:hover { background: #f1e6d6; }
+  .one-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 360px; font-family: system-ui, sans-serif; font-size: 14px; }
+  .note { float: right; width: 220px; margin: 0 0 12px 18px; padding: 10px 12px; background: #f3efe6; font-size: 14px; border-radius: 6px; }
+  .mixed { padding: 10px 14px; background: #eef3f7; border-radius: 6px; font-family: system-ui, sans-serif; font-size: 15px; }
+  .mixed p { margin: 6px 0; }
+  .media { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  canvas, video, iframe { width: 100%; border-radius: 6px; display: block; }
+  video { background: #000; aspect-ratio: 16 / 9; }
+  iframe { height: 160px; border: 1px solid #ccc; background: #fff; }
+  form { font-family: system-ui, sans-serif; display: flex; gap: 10px; align-items: center; margin: 18px 0; }
+  input[type=text] { padding: 6px 10px; font-size: 15px; width: 240px; }
+  x-card:not(:defined) { visibility: hidden; }
+  x-card { display: block; margin: 20px 0; }
+  footer { background: #1f2d3a; color: #c8d4df; padding: 30px 28px; font-family: system-ui, sans-serif; font-size: 14px; }
+  footer a { color: #fff; }
+  kbd { font: 13px monospace; padding: 1px 5px; border: 1px solid #bbb; border-radius: 3px; background: #fff; }
+  code { font: 15px Consolas, monospace; background: #efece4; padding: 1px 4px; border-radius: 3px; }
+</style>
+<style id="cssinjs"></style>
+</head>
+<body>
+<header class="top">
+  <span class="logo">FIELD NOTES</span>
+  <nav><a href="#intro">Science</a><a href="#ice">Climate</a><a href="#data">Data</a><a href="#more">About us</a></nav>
+</header>
+<div class="wrap">
+  <aside class="toc">
+    <h4>On this page</h4>
+    <ol>
+      <li><a href="#intro">Rivers of ice</a></li>
+      <li><a href="#ice">How ice moves</a></li>
+      <li><a href="#shape">From V to U</a></li>
+      <li><a href="#data">Measurements</a></li>
+      <li><a href="#more">Further reading</a></li>
+    </ol>
+  </aside>
+  <main>
+    <h1>How Glaciers Shape Mountain Valleys</h1>
+    <p class="lead">A slow river of ice can carve granite more thoroughly than any flood. Here is how it happens, and why the evidence lasts for millions of years.</p>
+    <div class="byline"><span>By <strong>Maria Lindqvist</strong></span><span>·</span><span>12 min read</span><span class="badge">Updated</span></div>
+
+    <h2 id="intro">Rivers of ice</h2>
+    <aside class="note">Glaciers cover about <b>10 percent</b> of the land surface today, down from roughly a third during the last glacial maximum.</aside>
+    <p>When snow survives the summer melt year after year, it slowly compacts into <em>firn</em> and then into dense glacial ice. Once the ice is thick enough, it begins to <a href="#ice">flow under its own weight</a>, moving downhill at speeds ranging from a few centimetres to several metres per day.</p>
+    <p>Unlike a river, a glacier does not need a channel to exist. It makes its own. The ice drags rocks frozen into its base across the bedrock, scraping and polishing it like sandpaper. Geologists call this process <strong>abrasion</strong>, and the long parallel scratches it leaves behind are known as <a href="#data">glacial striations</a>.</p>
+    <figure>
+      <img alt="A U-shaped valley" width="800" height="300" src="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='300'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%2387b5d9'/%3E%3Cstop offset='1' stop-color='%23dfeaf2'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='800' height='300' fill='url(%23g)'/%3E%3Cpath d='M0 300 L0 80 Q120 60 200 140 Q400 330 600 140 Q680 60 800 80 L800 300 Z' fill='%23596b5a'/%3E%3Cpath d='M180 120 L250 40 L320 130 Z M520 130 L600 30 L660 110 Z' fill='%23f5f7f9'/%3E%3C/svg%3E">
+      <figcaption>A typical U-shaped glacial valley. The flat floor and steep walls are the signature of ice, not water.</figcaption>
+    </figure>
+
+    <h2 id="ice">How ice moves</h2>
+    <p>Ice deforms like extremely stiff toothpaste. Under pressure, the crystals inside it slide past each other, a behaviour called <em>creep</em>. Where meltwater reaches the base, the whole glacier can also <a href="#shape">slide over its bed</a>, which is why some glaciers speed up dramatically in early summer.</p>
+    <blockquote>“The glacier is the most patient sculptor on Earth; it signs every valley it has ever touched.”</blockquote>
+    <p>You can see the difference for yourself: press <kbd>Ctrl</kbd> + <kbd>F</kbd> on any map of the Alps and search for “trough”. To reproduce our flow model, run <code>python flow.py --years 500</code> with the sample data.</p>
+    <div class="cards">
+      <div class="card"><h3>Creep</h3><p>Crystals deform slowly under the weight of the ice above them.</p><button type="button">Learn more</button></div>
+      <div class="card"><h3>Basal sliding</h3><p>Meltwater lubricates the bed and lets the glacier glide.</p><button type="button">See the data</button></div>
+      <div class="card"><h3>Surges</h3><p>Some glaciers advance ten times faster for a few months.</p><button type="button">Watch a surge</button></div>
+    </div>
+
+    <h2 id="shape">From V to U</h2>
+    <div class="mixed">Rivers cut narrow, V-shaped valleys because they erode mainly downward.
+      <p>Glaciers erode the floor <i>and</i> the walls at the same time, widening the valley into a U.</p>
+      When the ice retreats, tributary valleys are left hanging high above the main floor.
+    </div>
+    <p class="one-line">Hanging valleys often end in spectacular waterfalls, such as those in Yosemite and Lauterbrunnen.</p>
+    <x-card><span slot="title">Did you know?</span>Fjords are glacial valleys that were later flooded by the sea.</x-card>
+    <div class="media">
+      <video muted playsinline poster=""></video>
+      <canvas id="chart" width="400" height="225"></canvas>
+    </div>
+    <p>The left panel would normally play a time-lapse of the Aletsch Glacier; the right panel plots its length over the last century.</p>
+
+    <h2 id="data">Measurements</h2>
+    <table>
+      <thead><tr><th>Glacier</th><th>Country</th><th>Length (km)</th><th>Change since 1900</th></tr></thead>
+      <tbody>
+        <tr><td>Aletsch</td><td>Switzerland</td><td>22.6</td><td>Retreated about 3.2 km</td></tr>
+        <tr><td>Jostedalsbreen</td><td>Norway</td><td>60</td><td>Lost a quarter of its area</td></tr>
+        <tr><td>Perito Moreno</td><td>Argentina</td><td>30</td><td>Roughly stable</td></tr>
+      </tbody>
+    </table>
+    <form onsubmit="return false"><label for="q">Search the glacier inventory</label><input id="q" type="text" placeholder="Type a glacier name"><button>Search</button></form>
+    <iframe title="embedded map" srcdoc="<p style='font:14px sans-serif;margin:12px'>An embedded map would appear here.</p>"></iframe>
+
+    <h2 id="more">Further reading</h2>
+    <ul>
+      <li><a href="#intro">Benn &amp; Evans, <em>Glaciers and Glaciation</em></a> – the standard textbook, very readable.</li>
+      <li>The World Glacier Monitoring Service publishes yearly mass-balance data.</li>
+      <li>Field guides for hikers explain how to recognise moraines, cirques and erratic boulders.
+        <ul><li>Lateral moraines run along the valley sides.</li><li>Terminal moraines mark the furthest advance.</li></ul>
+      </li>
+    </ul>
+    <details><summary>Show the full methodology</summary><p>We combined satellite imagery with historical maps and field surveys.</p></details>
+    <p>Supercalifragilisticexpialidociously long words test how text wraps inside narrow boxes.</p>
+  </main>
+</div>
+<footer>© 2026 Field Notes. Text licensed under <a href="#more">Creative Commons</a>. Questions? Write to the editors.</footer>
+<script>
+  // CSS-in-JS 的写法：规则只在 CSSOM 里，<style> 的文字是空的
+  const sheet = document.getElementById('cssinjs').sheet;
+  sheet.insertRule('.byline strong { color: #1f5f8b; }', 0);
+  sheet.insertRule('.lead { border-left: 3px solid #e3c8a8; padding-left: 12px; }', 1);
+  // 画布
+  const c = document.getElementById('chart').getContext('2d');
+  c.fillStyle = '#f7f3ea'; c.fillRect(0, 0, 400, 225);
+  c.strokeStyle = '#b4532a'; c.lineWidth = 3; c.beginPath();
+  for (let i = 0; i <= 20; i++) c.lineTo(10 + i * 19, 40 + i * i * 0.4 + Math.sin(i) * 6);
+  c.stroke();
+  c.fillStyle = '#333'; c.font = '13px sans-serif'; c.fillText('Aletsch length, 1900–2020', 14, 210);
+  // 自定义元素（带 shadow DOM），定义得晚一点
+  setTimeout(() => customElements.define('x-card', class extends HTMLElement {
+    constructor() {
+      super();
+      const r = this.attachShadow({ mode: 'open' });
+      r.innerHTML = '<style>.box{border:1px solid #d9cbb5;border-radius:8px;padding:12px 16px;background:#fff8ec;font:15px/1.5 system-ui,sans-serif}'
+        + '.t{font-weight:700;display:block;margin-bottom:4px;color:#8a4b1f}</style>'
+        + '<div class="box"><slot name="title" class="t"></slot><slot></slot></div>';
+    }
+  }), 200);
+</script>
+</body>
+</html>
