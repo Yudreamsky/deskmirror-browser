@@ -29,8 +29,13 @@
   function jobsBackend(send) {
     const jobs = new Map();
     let seq = 0;
-    return {
+    const api = {
+      onEngine: null,                 // 后台换了服务（备用阵列）时调用
       reply(m) {
+        if (m.type === 'engine') {
+          if (api.onEngine) api.onEngine(m);
+          return;
+        }
         const j = jobs.get(m.id);
         if (!j) return;
         if (m.type === 'seg') j.onSeg(m.i, m.text);
@@ -49,6 +54,7 @@
         send(Object.assign({ type: 'batch', id }, req));
       },
     };
+    return api;
   }
 
   /** 扩展里：交给后台（后台去请求翻译服务，流式把每段送回来）。 */
@@ -148,21 +154,34 @@
     s.frame = frame;
     frame.setLang(cfg.source || 'auto', cfg.target);
 
+    const backend = cfg.backend || DM.makeBackend(cfg);
     s.units = new DM.Units(copy, {
       source: cfg.source || 'auto',
       target: cfg.target,
-      backend: cfg.backend || DM.makeBackend(cfg),
+      backend,
       frameRect: () => frame.rect,
       concurrency: cfg.concurrency,
       context: () => ((document.title || '').trim() + ' — ' + location.hostname).slice(0, 160),
       onStatus: (st) => {
         const t = (k, v) => T.ui(DM.uiLang, k, v);
-        if (st.paused) frame.setStatus(t('paused'), 'paused');
-        else if (st.error) frame.setStatus(t('error', { e: st.error }), 'error');
-        else if (st.pending || st.inflight) frame.setStatus(t('busy', { n: st.pending }), 'busy');
-        else frame.setStatus(t('ready'), 'ok');
+        // 正在用备用阵列里的备用：状态后面加“备用② 模型”，鼠标停上去看主力为什么不能用
+        const e = s.engine;
+        const extra = e ? t('backup', { n: T.circled(e.idx + 1), m: e.model || e.label }) : '';
+        const tip = e ? t('backupTip', { p: e.primary, e: e.reason || '—', n: T.circled(e.idx + 1), l: e.label }) : '';
+        if (st.paused) frame.setStatus(t('paused'), 'paused', tip, extra);
+        else if (st.error) frame.setStatus(t('error', { e: st.error }), 'error', st.error + (tip ? '\n\n' + tip : ''));
+        else if (st.pending || st.inflight) frame.setStatus(t('busy', { n: st.pending }), 'busy', tip, extra);
+        else frame.setStatus(t('ready'), 'ok', tip, extra);
       },
     });
+    if ('onEngine' in backend) {
+      backend.onEngine = (m) => {
+        s.engine = m.idx > 0 ? m : null;
+        // 本机模型一次一批（显卡排队），云端服务三批并发
+        if (typeof m.local === 'boolean') s.units.opts.concurrency = m.local ? 1 : 3;
+        s.units._dispatch();
+      };
+    }
     copy.on('change', () => { s.clipDirty = true; });
 
     const updateClip = () => {

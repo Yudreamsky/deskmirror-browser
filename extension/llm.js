@@ -21,17 +21,31 @@
     return String(base || '').trim().replace(/\/+$/, '');
   }
 
+  /** 带 HTTP 状态的错误（备用阵列按状态判断：Key、额度、模型这类一时好不了，先跳过久一些）。 */
+  function httpError(status, text) {
+    const e = new Error(text);
+    e.status = status;
+    return e;
+  }
+
+  /** 设置没填好（没有地址、没有模型名）。 */
+  function configError(text) {
+    const e = new Error(text);
+    e.config = true;
+    return e;
+  }
+
   /** 按 HTTP 状态说人话；ollama=true 时是 Ollama（云端模型 402 是订阅/免费额度不含这个模型）。 */
   function explain(status, detail, ollama) {
     if (status === 402) {
-      return new Error(ollama
+      return httpError(402, ollama
         ? msg('这个云端模型要付费额度：Ollama 订阅已到期，或免费额度不含它。请换一个模型（设置里“拉取模型”会找出账号现在能用的）',
           'This cloud model needs paid usage: the Ollama subscription has expired or the free tier does not include it. Pick another model (Get models in Settings finds the ones your account can use)')
         : msg('账户余额或额度不足，或订阅已到期', 'Out of balance or credit, or the subscription has expired') + ' (HTTP 402)');
     }
-    if (status === 410) return new Error(msg('这个模型已经下线了，请换一个', 'This model has been retired; pick another') + ' (HTTP 410)');
+    if (status === 410) return httpError(410, msg('这个模型已经下线了，请换一个', 'This model has been retired; pick another') + ' (HTTP 410)');
     if (ollama && status === 404) {
-      return new Error(msg('本机 Ollama 没有这个模型，先用 ollama pull 下载，或换一个', 'Ollama on this PC does not have this model; pull it first or pick another') + ' (HTTP 404)');
+      return httpError(404, msg('本机 Ollama 没有这个模型，先用 ollama pull 下载，或换一个', 'Ollama on this PC does not have this model; pull it first or pick another') + ' (HTTP 404)');
     }
     return null;
   }
@@ -42,11 +56,11 @@
     const known = explain(res.status, detail, false);
     if (known) return known;
     if (res.status === 401 || res.status === 403) {
-      return new Error(msg('API Key 不对或没有权限', 'Wrong API key or no access') + ' (HTTP ' + res.status + ')');
+      return httpError(res.status, msg('API Key 不对或没有权限', 'Wrong API key or no access') + ' (HTTP ' + res.status + ')');
     }
-    if (res.status === 404) return new Error(msg('地址或模型名不对', 'Wrong address or model name') + ' (HTTP 404)' + (detail ? ' ' + detail : ''));
-    if (res.status === 429) return new Error(msg('请求太频繁或额度用完', 'Too many requests or out of credit') + ' (HTTP 429)');
-    return new Error(msg('服务返回错误', 'The service returned an error') + ' HTTP ' + res.status + (detail ? ' ' + detail : ''));
+    if (res.status === 404) return httpError(404, msg('地址或模型名不对', 'Wrong address or model name') + ' (HTTP 404)' + (detail ? ' ' + detail : ''));
+    if (res.status === 429) return httpError(429, msg('请求太频繁或额度用完', 'Too many requests or out of credit') + ' (HTTP 429)');
+    return httpError(res.status, msg('服务返回错误', 'The service returned an error') + ' HTTP ' + res.status + (detail ? ' ' + detail : ''));
   }
 
   /** fetch 本身失败（服务没开、地址写错、断网）时给一句看得懂的话。 */
@@ -56,9 +70,11 @@
     } catch (e) {
       if (init.signal && init.signal.aborted) throw e;
       const where = url.replace(/\/(api\/chat|api\/tags|chat\/completions|v1\/models|models)$/, '');
-      throw new Error(what === 'ollama'
+      const err = new Error(what === 'ollama'
         ? msg('连不上 Ollama，它开着吗（' + where + '）', 'Cannot reach Ollama. Is it running? (' + where + ')')
         : msg('连不上翻译服务（' + where + '）', 'Cannot reach the translation service (' + where + ')'));
+      err.network = true;
+      throw err;
     }
   }
 
@@ -86,8 +102,8 @@
    */
   async function translateBatch(T, cfg, req, onSeg, signal) {
     const base = trimBase(cfg.baseUrl);
-    if (!base) throw new Error(msg('还没有填写翻译服务地址', 'No service address yet'));
-    if (!String(cfg.model || '').trim()) throw new Error(msg('还没有填写模型名', 'No model name yet'));
+    if (!base) throw configError(msg('还没有填写翻译服务地址', 'No service address yet'));
+    if (!String(cfg.model || '').trim()) throw configError(msg('还没有填写模型名', 'No model name yet'));
     const messages = [
       { role: 'system', content: T.systemPrompt(req.target, req.source) },
       { role: 'user', content: T.userMessage(req.segments, req.context) },
@@ -108,7 +124,7 @@
             continue;
           }
           throw explain(res.status, text, true)
-            || new Error(msg('Ollama 返回错误', 'Ollama returned an error') + ' HTTP ' + res.status + ' ' + text.slice(0, 160));
+            || httpError(res.status, msg('Ollama 返回错误', 'Ollama returned an error') + ' HTTP ' + res.status + ' ' + text.slice(0, 160));
         }
         for await (const line of lines(res)) {
           if (!line) continue;
@@ -198,7 +214,7 @@
         messages: [{ role: 'user', content: 'Hi' }], options: { num_predict: 1, num_ctx: 4096 } }) }, 'ollama');
       if (!res.ok) {
         const text = await res.text().catch(() => '');
-        throw explain(res.status, text, true) || new Error('HTTP ' + res.status + ' ' + text.slice(0, 120));
+        throw explain(res.status, text, true) || httpError(res.status, 'HTTP ' + res.status + ' ' + text.slice(0, 120));
       }
       return true;
     }
@@ -216,7 +232,7 @@
     return out;
   }
 
-  const api = { translateBatch, testConnection, listModels, probeModel, setUiLang };
+  const api = { translateBatch, testConnection, listModels, probeModel, setUiLang, msg };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else (root.__dm = root.__dm || {}).llm = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -19,6 +19,7 @@
         'After signing in to Ollama on this PC, models ending in :cloud run in Ollama\'s cloud; text is sent there.'] },
     { id: 'ollama-cloud', group: 'plan', name: ['Ollama 云端（直连 ollama.com，订阅）', 'Ollama Cloud (direct to ollama.com, subscription)'],
       protocol: 'ollama', baseUrl: 'https://ollama.com', model: '', key: true, site: 'https://ollama.com/settings/keys' },
+    // <store-strip> 编程订阅套餐：服务条款通常只允许在编程工具里用，上架版不放（tools/pack.mjs 打包时去掉到 </store-strip>）
     { id: 'glm-coding', group: 'plan', name: ['智谱 GLM Coding Plan', 'Zhipu GLM Coding Plan (China)'],
       protocol: 'openai', baseUrl: 'https://open.bigmodel.cn/api/coding/paas/v4', model: 'glm-4.5-air', key: true,
       site: 'https://bigmodel.cn/glm-coding', note: PLAN_NOTE },
@@ -40,6 +41,7 @@
       protocol: 'openai', baseUrl: 'https://api.minimaxi.com/v1', model: 'MiniMax-M2.5', key: true,
       site: 'https://platform.minimaxi.com', note: ['套餐 Key 和按量付费的 Key 不通用。' + PLAN_NOTE[0],
         'The plan key differs from pay-as-you-go keys. ' + PLAN_NOTE[1]] },
+    // </store-strip>
 
     { id: 'deepseek', group: 'cn', name: ['DeepSeek', 'DeepSeek'],
       protocol: 'openai', baseUrl: 'https://api.deepseek.com', model: 'deepseek-flash', key: true, site: 'https://platform.deepseek.com' },
@@ -83,8 +85,10 @@
 
     { id: 'openai-custom', group: 'other', name: ['其他 OpenAI 兼容接口（自己填地址）', 'Other OpenAI-compatible API (enter the address)'],
       protocol: 'openai', baseUrl: '', model: '', key: true },
+    // <store-strip> 测试用假翻译：上架版不放
     { id: 'mock', group: 'other', name: ['测试用假翻译（不联网，只看排版）', 'Fake translation for testing (offline, layout only)'],
       protocol: 'mock', baseUrl: '', model: '', key: false },
+    // </store-strip>
   ];
 
   const GROUPS = [
@@ -109,7 +113,53 @@
     return ids.find((id) => !bad.test(id)) || ids[0] || '';
   }
 
-  const api = { PRESETS: P, GROUPS, byId, ALIASES, pickModel };
+  // ---------------------------------------------------------------- 备用阵列
+  const MAX_CHAIN = 6;
+
+  /** 存着的服务名 → 现在的（0.2.0 以前“其他 OpenAI 兼容接口”叫 openai，现在 openai 是 OpenAI 官方）。 */
+  function presetOf(e) {
+    let id = e.preset;
+    if (id === 'openai' && !/api\.openai\.com/.test(e.baseUrl || '')) id = 'openai-custom';
+    if (!byId[id]) id = e.protocol === 'ollama' ? 'ollama' : e.protocol === 'mock' && byId.mock ? 'mock' : 'openai-custom';
+    return id;
+  }
+
+  /**
+   * 设置里的备用阵列（第一个是主力）：[{ preset, protocol, baseUrl, model, apiKey, extra }]。
+   * 0.4.0 以前的设置只有一个服务（存在最外层），就是只有主力的阵列。协议和附加参数按服务商来；不要 Key 的服务不带 Key。
+   */
+  function chainOf(s) {
+    const raw = s && Array.isArray(s.chain) && s.chain.length ? s.chain : [s || {}];
+    return raw.filter((e) => e && typeof e === 'object').slice(0, MAX_CHAIN).map((e) => {
+      const id = presetOf(e);
+      const p = byId[id];
+      return { preset: id, protocol: p.protocol, baseUrl: String(e.baseUrl || '').trim(), model: String(e.model || '').trim(),
+        apiKey: p.key ? String(e.apiKey || '').trim() : '', extra: p.extra || null };
+    });
+  }
+
+  /** 服务商的短名字：去掉括号里的说明（“本机 Ollama（免费，文字不出本机）”→“本机 Ollama”）。 */
+  function shortName(id, lang) {
+    const p = byId[id] || byId['openai-custom'];
+    return p.name[lang === 'zh' ? 0 : 1].replace(/\s*[（(][^）)]*[）)]/g, '').trim();
+  }
+
+  /** 列表和镜框上显示的名字：“本机 Ollama · gemma4:12b”；自己填地址的显示地址里的域名。 */
+  function engineLabel(e, lang) {
+    let name = shortName(e.preset, lang);
+    if (e.preset === 'openai-custom') {
+      try { name = new URL(e.baseUrl).host || name; } catch (x) { /* 还没填地址 */ }
+    }
+    return e.protocol === 'mock' ? name : name + ' · ' + (e.model || '?');
+  }
+
+  /** 跑在这台电脑上的模型（本机 Ollama 的非云端模型、LM Studio）：一次一批，第一次要加载，等得久些。 */
+  function isLocal(e) {
+    return e.protocol !== 'mock' && /^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:|\/|$)/i.test(e.baseUrl || '')
+      && !/cloud$/i.test(e.model || '');
+  }
+
+  const api = { PRESETS: P, GROUPS, byId, ALIASES, pickModel, MAX_CHAIN, presetOf, chainOf, shortName, engineLabel, isLocal };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else (root.__dm = root.__dm || {}).presets = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

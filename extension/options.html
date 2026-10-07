@@ -5,9 +5,10 @@
 <title>DeskMirror</title>
 <style>
   :root { color-scheme: light dark; --blue: #3d8bfd; --muted: #6b7280; --line: #d6dae1; --bg: #fff; --card: #f7f8fa;
-    --ok: #16a34a; --err: #dc2626; --note: #eef5ff; }
+    --ok: #16a34a; --err: #dc2626; --note: #eef5ff; --warn: #b45309; }
   @media (prefers-color-scheme: dark) {
-    :root { --muted: #9aa3af; --line: #3a3f47; --bg: #1c1e23; --card: #24272d; --ok: #4ade80; --err: #f87171; --note: #1e2a3d; }
+    :root { --muted: #9aa3af; --line: #3a3f47; --bg: #1c1e23; --card: #24272d; --ok: #4ade80; --err: #f87171; --note: #1e2a3d;
+      --warn: #fbbf24; }
   }
   body { margin: 0; background: var(--bg); font: 14px/1.6 "Microsoft YaHei UI", "PingFang SC", system-ui, sans-serif; }
   main { max-width: 660px; margin: 32px auto; padding: 0 20px; }
@@ -36,7 +37,32 @@
   .msg.ok { color: var(--ok); } .msg.err { color: var(--err); }
   .banner { background: var(--note); border: 1px solid var(--blue); border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; }
   .notes { margin: 6px 0 0; padding-left: 20px; }
-  #presetNote { color: #b45309; }
+  #presetNote { color: var(--warn); }
+  .chain { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 8px; }
+  .eng { border: 1px solid var(--line); border-radius: 8px; background: var(--bg); padding: 5px 6px 5px 10px; }
+  .chain.many .eng { cursor: pointer; }
+  .chain.many .eng:hover { border-color: var(--blue); }
+  .chain.many .eng.sel { border-color: var(--blue); box-shadow: inset 3px 0 0 var(--blue); }
+  .eng .top { display: flex; align-items: center; gap: 8px; min-height: 24px; }
+  .eng .num { font-weight: 700; color: var(--blue); flex: none; }
+  .eng .role { font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; flex: none; }
+  .eng .name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .eng .mini { padding: 0 7px; font-size: 12px; line-height: 20px; flex: none; }
+  .eng .mini.hide { visibility: hidden; }
+  .eng .state { font-size: 12px; margin: 1px 0 2px 22px; color: var(--muted); overflow-wrap: anywhere; }
+  .eng .state.ok { color: var(--ok); } .eng .state.err { color: var(--err); } .eng .state.skip { color: var(--warn); }
+  .chainBar { display: flex; gap: 8px; flex-wrap: wrap; }
+  .editor { margin-top: 14px; border-top: 1px dashed var(--line); }
+  .editing { font-size: 13px; color: var(--muted); margin-top: 10px; }
+  #unsaved { color: var(--warn); }
+  .about div { margin: 4px 0; }
+  .about .mini { padding: 1px 8px; font-size: 12px; margin-left: 6px; }
+  details { margin-top: 12px; }
+  summary { cursor: pointer; color: var(--blue); width: max-content; }
+  .rewardBody { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; padding: 10px 0 4px; }
+  .rewardBody p { margin: 0; }
+  .rewardBody.en .kofi { order: -1; }
+  .rewardBody img { width: 300px; height: 300px; border-radius: 8px; }
   a { color: var(--blue); }
   ul { margin: 6px 0 0; padding-left: 20px; }
   kbd { font: 12px monospace; padding: 1px 5px; border: 1px solid var(--line); border-radius: 4px; }
@@ -71,6 +97,14 @@
 
   <div class="card">
     <h2 data-t="service"></h2>
+    <div class="hint" data-t="chainHint"></div>
+    <div class="chain" id="chain"></div>
+    <div class="chainBar">
+      <button id="addEngine" type="button" data-t="add"></button>
+      <button id="testAll" type="button" data-t="testAll"></button>
+    </div>
+    <div class="editor">
+    <div class="editing" id="editing"></div>
     <label for="preset" data-t="svcLabel"></label>
     <select id="preset"></select>
     <div class="hint" id="presetNote" hidden></div>
@@ -91,9 +125,11 @@
       <select id="models" hidden></select>
       <div class="msg" id="modelMsg"></div>
     </div>
+    </div>
     <div class="row">
       <button class="primary" id="save" data-t="save"></button>
       <button id="test" data-t="test"></button>
+      <span class="msg" id="unsaved"></span>
       <span class="msg" id="result"></span>
     </div>
   </div>
@@ -113,9 +149,28 @@
     <h2 data-t="howCard"></h2>
     <ul id="how"></ul>
   </div>
+
+  <div class="card">
+    <h2 data-t="aboutCard"></h2>
+    <div class="about">
+      <div><span data-t="email"></span><a id="mail" href="mailto:a885187@gmail.com">a885187@gmail.com</a><button id="copyMail" type="button" class="mini" data-t="copyMail"></button></div>
+      <div><span data-t="desktop"></span><a href="https://github.com/Yudreamsky/deskmirror" target="_blank" rel="noopener">github.com/Yudreamsky/deskmirror</a></div>
+    </div>
+    <details id="reward">
+      <summary data-t="reward"></summary>
+      <div class="rewardBody" id="rewardBody">
+        <p data-t="thanks"></p>
+        <img src="assets/wechat_reward.jpg" alt="">
+        <p data-t="scan"></p>
+        <p class="hint" data-t="optional"></p>
+        <p class="kofi" id="kofi"></p>
+      </div>
+    </details>
+  </div>
 </main>
 <script src="content/text.js"></script>
 <script src="presets.js"></script>
+<script src="chain.js"></script>
 <script src="llm.js"></script>
 <script src="options.js"></script>
 </body>

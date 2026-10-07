@@ -32,6 +32,7 @@
       mirror: '魔镜', pause: '暂停', resume: '继续', close: '关闭魔镜', langTitle: '原文和译成的语言',
       from: '原文', to: '译成', ready: '就绪', paused: '已暂停', busy: '翻译中 {n}', error: '出错：{e}',
       updated: '扩展已更新，请重新打开魔镜', disconnected: '后台断开了',
+      backup: '备用{n} {m}', backupTip: '主力（{p}）出错：{e}\n现在用备用{n}：{l}',
       src_auto: '自动识别', src_en: '英文', src_zh: '中文', src_ja: '日文', src_ko: '韩文', src_id: '印尼文',
       s_auto: '自动', s_en: '英', s_zh: '中', s_ja: '日', s_ko: '韩', s_id: '印尼',
       t_zh_Hans: '中', t_zh_Hant: '繁', t_en: '英', t_ja: '日', t_ko: '韩', t_id: '印尼',
@@ -40,11 +41,17 @@
       mirror: 'Mirror', pause: 'Pause', resume: 'Resume', close: 'Close the mirror', langTitle: 'Source and target languages',
       from: 'Original', to: 'Translate into', ready: 'Ready', paused: 'Paused', busy: 'Translating {n}', error: 'Error: {e}',
       updated: 'The extension was updated; open the mirror again', disconnected: 'Lost the connection to the extension',
+      backup: 'backup {n} {m}', backupTip: 'The main service ({p}) failed: {e}\nNow using backup {n}: {l}',
       src_auto: 'Auto-detect', src_en: 'English', src_zh: 'Chinese', src_ja: 'Japanese', src_ko: 'Korean', src_id: 'Indonesian',
       s_auto: 'Auto', s_en: 'EN', s_zh: 'ZH', s_ja: 'JA', s_ko: 'KO', s_id: 'ID',
       t_zh_Hans: 'ZH', t_zh_Hant: 'ZH-T', t_en: 'EN', t_ja: 'JA', t_ko: 'KO', t_id: 'ID',
     },
   };
+
+  /** 带圈的序号 ①②③……（备用阵列里第几个）。 */
+  function circled(n) {
+    return n >= 1 && n <= 20 ? String.fromCharCode(0x2460 + n - 1) : '(' + n + ')';
+  }
 
   function uiLang(native) {
     return /^zh/.test(native || '') ? 'zh' : 'en';
@@ -328,7 +335,7 @@
   }
 
   const api = {
-    TARGETS, SOURCES, NATIVE_NAMES, UI, uiLang, ui, langLabel, guessNative, systemPrompt, userMessage, SegmentParser, stripThink,
+    TARGETS, SOURCES, NATIVE_NAMES, UI, circled, uiLang, ui, langLabel, guessNative, systemPrompt, userMessage, SegmentParser, stripThink,
     parseTagged, stripTags, scriptCounts, hasWords, isAlreadyTarget, matchesSource, mockTranslate, hash,
   };
   if (typeof module === 'object' && module.exports) module.exports = api;

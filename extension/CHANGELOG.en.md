@@ -1,5 +1,11 @@
 # DeskMirror for browsers · Changes
 
+## 0.4.0 (2026-10-07)
+- Backup services: line up several translation services (for example Ollama Cloud → Ollama on this PC → DeepSeek). When one fails (out of credit, wrong key, model retired, unreachable, too slow), the next takes over without redoing finished text; a failed service is skipped for a while and retried later, and Save starts again from the main one.
+- While a backup is in use, the mirror's tab shows "backup ② model" and its tooltip says why the main service failed; Settings lists which services are skipped and why, and "Test all" checks every one.
+- An About section at the bottom of Settings with a feedback email; "Support the author" is folded inside it (entirely optional, unlocks nothing).
+
+- The extension is now called "DeskMirror – translate web pages in place"; the buttons on the mirror's tab no longer get squeezed, and only the status text is shortened when space runs out.
 ## 0.3.1 (2026-10-07)
 - Choosing "Ollama Cloud models" now finds the models your account can use right now (after a subscription expires most need paid usage, and some are retired); errors say whether a model needs paid usage or was retired.
 

@@ -26,6 +26,7 @@
   user-select: none; white-space: nowrap; overflow: hidden; }
 .tab.below { border-radius: 0 0 6px 6px; }
 .tab b { font-weight: 600; }
+.tab > b, .tab > .btn { flex: none; }
 .btn.lang { color: #dfe3ea; background: rgba(255, 255, 255, 0.08); }
 .menu { position: fixed; display: flex; gap: 6px; padding: 6px; background: rgba(28, 30, 36, 0.97); color: #ebeef5;
   border-radius: 6px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35); pointer-events: auto; user-select: none;
@@ -38,6 +39,7 @@
 .menu .arrow { align-self: center; color: #6b7280; padding: 0 2px; }
 .status { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: #78dc8c; }
 .status.busy { color: #78b4ff; } .status.error { color: #ff6e6e; } .status.paused { color: #b9b9be; }
+.status .bk { color: #ffc857; }
 .btn { all: unset; cursor: pointer; height: 20px; min-width: 20px; padding: 0 6px; box-sizing: border-box;
   border-radius: 4px; text-align: center; line-height: 20px; color: #ebeef5; background: rgba(255, 255, 255, 0.12);
   font: 12px/20px "Microsoft YaHei UI", "PingFang SC", system-ui, sans-serif; }
@@ -197,9 +199,18 @@
       this.menu.style.top = Math.max(4, y) + 'px';
     }
 
-    setStatus(text, level) {
+    /** extra：跟在后面的琥珀色说明（正在用备用）；tip：鼠标停上去显示的详情。 */
+    setStatus(text, level, tip, extra) {
       this.status.textContent = text;
+      if (extra) {
+        const b = document.createElement('span');
+        b.className = 'bk';
+        b.textContent = ' · ' + extra;
+        this.status.appendChild(b);
+      }
       this.status.className = 'status ' + (level || '');
+      this.status.title = tip || '';
+      if (extra || this._wide) this.layout();
     }
 
     setPaused(on) {
@@ -280,6 +291,15 @@
       const below = y - LINE - TAB_H < 0;
       this.tab.classList.toggle('below', below);
       place(this.tab, x - LINE, below ? y + h + LINE : y - LINE - TAB_H, tw, TAB_H);
+      // 正在用备用时状态字长：标签加宽到放得下（最宽和镜框一样）
+      this._wide = false;
+      if (this.status.querySelector('.bk')) {
+        this.tab.style.width = 'max-content';
+        const natural = Math.ceil(this.tab.getBoundingClientRect().width) + 1;
+        const want = Math.min(Math.max(tw, w + 2 * LINE), Math.max(tw, natural));
+        this.tab.style.width = want + 'px';
+        this._wide = want > tw;
+      }
       this._placeMenu();
     }
   }
