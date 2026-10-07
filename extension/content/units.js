@@ -16,8 +16,10 @@
   const ATOMIC = new Set(['img', 'svg', 'canvas', 'video', 'audio', 'iframe', 'embed', 'object', 'input', 'select',
     'textarea', 'button', 'br', 'wbr', 'hr', 'picture', 'math', 'meter', 'progress']);
   const CODEY = new Set(['code', 'kbd', 'samp', 'var', 'tt']);
+  // 行内 span 和父元素在这些属性上都一样，才当成“没有作用”拆掉（继承下去的换行规则也要一样）
   const NEUTRAL_PROPS = ['color', 'fontWeight', 'fontStyle', 'fontFamily', 'fontSize', 'textDecorationLine',
-    'verticalAlign', 'letterSpacing', 'textTransform', 'textShadow'];
+    'verticalAlign', 'letterSpacing', 'wordSpacing', 'textTransform', 'textShadow', 'whiteSpace', 'wordBreak',
+    'overflowWrap', 'lineBreak', 'hyphens', 'lineHeight', 'fontVariant', 'fontFeatureSettings', 'direction'];
   const BATCH_SEGMENTS = 12;
   const BATCH_CHARS = 1800;
 
@@ -66,6 +68,7 @@
       this.inflight = 0;
       this.locks = new Map();         // 真网页元素 → 引用数
       this.fitted = new Set();        // 缩过字的复制品元素
+      this._containers = new Map();   // 放了 leaf 译文的块 → 个数
       this.dirty = new Set();
       this.dirtyAttr = new Set();
       this.toScan = new Set();
@@ -441,7 +444,7 @@
         if (c) out.push(c);
       }
       cRoot.replaceChildren(...out);
-      if (!u.rendered) this._lock(u.node);
+      if (!u.rendered) u.locked = this._lockTree(u.node);
       u.rendered = true;
       this._fit(u.node);
       return true;
@@ -451,7 +454,10 @@
       const c = this.copy.map.get(u.node);
       if (!c) return false;
       c.data = u.lead + text + u.trail;
-      if (!u.rendered) this._lock(u.container);
+      if (!u.rendered) {
+        u.locked = this._lockTree(u.container);
+        this._containers.set(u.container, (this._containers.get(u.container) || 0) + 1);
+      }
       u.rendered = true;
       this._fit(u.container);
       return true;
@@ -462,15 +468,54 @@
       if (u.kind === 'leaf') {
         const c = this.copy.map.get(u.node);
         if (c) c.data = u.node.data;
-        this._unlock(u.container);
+        for (const el of u.locked || []) this._unlock(el);
+        const n = this._containers.get(u.container) || 0;
+        if (n > 1) this._containers.set(u.container, n - 1);
+        else this._containers.delete(u.container);
       } else {
         this.copy.resync(u.node);
-        this._unlock(u.node);
+        for (const el of u.locked || []) this._unlock(el);
       }
       u.rendered = false;
     }
 
     // ---------------------------------------------------------------- 锁大小、缩字
+    /**
+     * 锁住这一块，还有会被它的内容大小牵动的祖先和兄弟：
+     * 弹性盒、网格里的项目，宽度由内容决定的祖先（inline-block、浮动、绝对定位、表格单元格、弹性项目）。
+     * 只锁这一块的话，它的“内容宽度”变了，祖先按内容收缩时会算出不同的宽度，兄弟分到的空间也跟着变。
+     */
+    _lockTree(el) {
+      const out = [el];
+      this._lock(el);
+      let cur = el;
+      for (let i = 0; i < 8; i++) {
+        const p = flatParent(cur);
+        if (!p || p === document.body || p === document.documentElement) break;
+        const pd = getComputedStyle(p).display;
+        if (/flex|grid/.test(pd)) {
+          for (const sib of p.children) {
+            if (sib === cur || sib === this.copy.shell.host) continue;
+            this._lock(sib);
+            out.push(sib);
+          }
+        }
+        if (!this._contentSized(p)) break;
+        this._lock(p);
+        out.push(p);
+        cur = p;
+      }
+      return out;
+    }
+
+    _contentSized(el) {
+      const cs = getComputedStyle(el);
+      if (cs.display.startsWith('inline') || cs.display === 'table-cell' || cs.display === 'table') return true;
+      if (cs.cssFloat !== 'none' || cs.position === 'absolute' || cs.position === 'fixed') return true;
+      const p = flatParent(el);
+      return !!p && /flex|grid/.test(getComputedStyle(p).display);
+    }
+
     _lock(el) {
       const n = this.locks.get(el);
       if (n) {
@@ -503,7 +548,8 @@
       if (!cs.width.endsWith('px') || !cs.height.endsWith('px')) return;
       const st = c.style;
       st.setProperty('width', cs.width, 'important');
-      st.setProperty('height', cs.height, 'important');
+      // 表格的 height 量出来含标题（caption），设回去只作用于表格本身，会多出一个标题的高度；表格高度由行决定，不锁
+      if (!/table$/.test(cs.display)) st.setProperty('height', cs.height, 'important');
       st.setProperty('min-width', '0px', 'important');
       st.setProperty('min-height', '0px', 'important');
       st.setProperty('max-width', 'none', 'important');
@@ -525,7 +571,9 @@
       for (const e of entries) {
         if (this.locks.has(e.target)) {
           this._applyLock(e.target);
-          this._fit(e.target);
+          // 只有放译文的块才缩字；一起锁住的祖先、兄弟不缩
+          const u = this.byNode.get(e.target);
+          if ((u && u.rendered) || this._containers.has(e.target)) this._fit(e.target);
         }
       }
     }
@@ -538,8 +586,8 @@
         this.fitted.delete(c);
         this.copy._syncAttr(el, 'style', null);   // 先撤掉上次缩的字号（会触发 _restyle 补回锁）
       }
-      const limitH = Math.max(c.clientHeight, el.scrollHeight) + 1;
-      const limitW = Math.max(c.clientWidth, el.scrollWidth) + 1;
+      const limitH = Math.max(c.clientHeight, el.scrollHeight) + 2;
+      const limitW = Math.max(c.clientWidth, el.scrollWidth) + 2;
       const over = () => c.scrollHeight > limitH || c.scrollWidth > limitW;
       if (!over()) return;
       const cs = getComputedStyle(c);

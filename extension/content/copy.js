@@ -15,6 +15,8 @@
     video: ['src', 'autoplay'], audio: ['src', 'autoplay'], track: ['src'], script: ['src'],
   };
   const HOVER_PSEUDO = /:(hover|focus-visible|focus-within|focus|active)\b/;
+  // 图片、视频这类元素的大小取决于加载状态（没加载完、加载失败、懒加载），两边常常不一样，按真网页钉住
+  const REPLACED = new Set(['img', 'video', 'canvas', 'iframe', 'embed', 'object']);
 
   function shadowOf(el) {
     try {
@@ -106,6 +108,14 @@
       this._helperSheet();
       this._hoverSheet();
 
+      this.replacedRO = new ResizeObserver((entries) => {
+        for (const e of entries) {
+          const c = this.map.get(e.target);
+          if (c && c.nodeType === 1) this._sizeReplaced(e.target, c);
+        }
+      });
+      for (const el of this._earlyReplaced || []) this.replacedRO.observe(el);
+      this._earlyReplaced = null;
       this.observer = new MutationObserver((recs) => this._onMutations(recs));
       this._observe(document);
       this._listen(window, document);
@@ -122,6 +132,7 @@
     destroy() {
       cancelAnimationFrame(this._raf);
       if (this.observer) this.observer.disconnect();
+      if (this.replacedRO) this.replacedRO.disconnect();
       for (const off of this._offs || []) off();
       clearInterval(this._shadowTimer);
       for (const a of [this._animY, this._animX, ...this.fixed.values()]) if (a) a.cancel();
@@ -252,6 +263,23 @@
       if (tag.includes('-')) this._pin(orig, c);
       if (tag === 'dialog' || orig.hasAttribute('popover')) this._topLayer(orig);
       if (orig.scrollTop || orig.scrollLeft) this.scrolled.add(orig);
+      if (REPLACED.has(tag)) {
+        this._sizeReplaced(orig, c);
+        if (this.replacedRO) this.replacedRO.observe(orig);
+        else (this._earlyReplaced = this._earlyReplaced || []).push(orig);
+      }
+    }
+
+    _sizeReplaced(orig, c) {
+      const cs = getComputedStyle(orig);
+      if (cs.display === 'none' || !cs.width.endsWith('px')) return;
+      c.style.setProperty('width', cs.width, 'important');
+      c.style.setProperty('height', cs.height, 'important');
+      c.style.setProperty('min-width', '0px', 'important');
+      c.style.setProperty('min-height', '0px', 'important');
+      c.style.setProperty('max-width', 'none', 'important');
+      c.style.setProperty('max-height', 'none', 'important');
+      c.style.setProperty('aspect-ratio', 'auto', 'important');
     }
 
     /** 自定义元素在复制品里永远是“未定义”，网站常用 :not(:defined) 把它藏起来；把真网页上的显示状态钉上去。 */
@@ -533,6 +561,7 @@
       if (name === 'style' && !ns) {
         c.style.cssText = orig.style ? orig.style.cssText : '';
         if (tag.includes('-')) this._pin(orig, c);
+        if (REPLACED.has(tag)) this._sizeReplaced(orig, c);
         this._emit('styleReset', orig, c);
         return;
       }
