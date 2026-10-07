@@ -190,7 +190,6 @@
 
     /** 生成带标签的原文：<gN>…</gN> 是要保留的行内元素，<xN/> 是原样搬过去的整块（图片、代码、换行、内联块）。 */
     _build(u) {
-      const target = this.opts.target;
       if (u.kind === 'leaf') {
         const cs = getComputedStyle(u.container);
         const raw = u.node.data;
@@ -200,7 +199,7 @@
         u.src = text.trim();
         u.plain = u.src;
         u.tags = [];
-        u.key = target + '\u0001' + u.src;
+        u.key = this._prefix() + u.src;
         return;
       }
       const root = u.node;
@@ -245,7 +244,26 @@
       u.tags = tags;
       u.carry = carry;
       u.plain = T.stripTags(out);
-      u.key = target + '\u0001' + out;
+      u.key = this._prefix() + out;
+    }
+
+    _prefix() {
+      return (this.opts.source || 'auto') + '\u0001' + this.opts.target + '\u0001';
+    }
+
+    /** 换语言方向：撤掉已排进去的译文，全部按新方向重翻（翻过的还在缓存里，切回来不用再请求）。 */
+    setLanguages(source, target) {
+      if (source === this.opts.source && target === this.opts.target) return;
+      this.opts.source = source;
+      this.opts.target = target;
+      for (const u of this.byNode.values()) {
+        if (u.rendered) this._revert(u);
+        if (u.state !== 'gone') u.state = 'new';
+      }
+      this.queue = [];
+      this.waiting.clear();
+      this.srcOf.clear();
+      this.pumpSoon(0);
     }
 
     _rect(u) {
@@ -293,7 +311,8 @@
 
     _request(u) {
       this._build(u);
-      if (!u.src || !T.hasWords(u.plain) || T.isAlreadyTarget(u.plain, this.opts.target)) {
+      if (!u.src || !T.hasWords(u.plain) || T.isAlreadyTarget(u.plain, this.opts.target)
+          || !T.matchesSource(u.plain, this.opts.source)) {
         u.state = 'skip';
         return;
       }
@@ -339,7 +358,8 @@
       const ctx = this.opts.context ? this.opts.context() : '';
       let finished = false;
       this.opts.backend.translate(
-        { segments: keys.map((k) => this.srcOf.get(k)), target: this.opts.target, context: ctx },
+        { segments: keys.map((k) => this.srcOf.get(k)), source: this.opts.source || 'auto', target: this.opts.target,
+          context: ctx },
         (i, text) => {
           if (finished || got.has(i) || i < 0 || i >= keys.length) return;
           got.add(i);

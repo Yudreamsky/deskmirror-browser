@@ -26,7 +26,16 @@
   user-select: none; white-space: nowrap; overflow: hidden; }
 .tab.below { border-radius: 0 0 6px 6px; }
 .tab b { font-weight: 600; }
-.lang { color: #c9cdd6; }
+.btn.lang { color: #dfe3ea; background: rgba(255, 255, 255, 0.08); }
+.menu { position: fixed; display: flex; gap: 6px; padding: 6px; background: rgba(28, 30, 36, 0.97); color: #ebeef5;
+  border-radius: 6px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35); pointer-events: auto; user-select: none;
+  font: 13px/1.2 "Microsoft YaHei UI", "PingFang SC", system-ui, sans-serif; }
+.menu .col { display: flex; flex-direction: column; gap: 1px; min-width: 104px; }
+.menu .head { color: #9aa3af; font-size: 12px; padding: 3px 8px 5px; }
+.menu .item { padding: 5px 8px; border-radius: 4px; cursor: pointer; white-space: nowrap; }
+.menu .item:hover { background: rgba(255, 255, 255, 0.12); }
+.menu .item.on { background: ${BLUE}; color: #fff; }
+.menu .arrow { align-self: center; color: #6b7280; padding: 0 2px; }
 .status { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: #78dc8c; }
 .status.busy { color: #78b4ff; } .status.error { color: #ff6e6e; } .status.paused { color: #b9b9be; }
 .btn { all: unset; cursor: pointer; height: 20px; min-width: 20px; padding: 0 6px; box-sizing: border-box;
@@ -41,7 +50,11 @@
   class Frame {
     constructor(shell, rect, handlers) {
       this.root = shell.root;
-      this.h = handlers;              // { onRect(rect, done), onPause(), onClose() }
+      this.h = handlers;              // { onRect(rect, done), onPause(), onClose(), onLang(source, target), uiLang }
+      this.ui = handlers.uiLang || 'zh';
+      this.source = 'auto';
+      this.target = 'zh-Hans';
+      this.paused = false;
       this.rect = Object.assign({}, rect);
       const mk = (cls, tag) => {
         const el = document.createElement(tag || 'div');
@@ -59,16 +72,15 @@
         this.bands[z] = b;
       }
       this.tab = mk('tab');
-      const title = document.createElement('b');
-      title.textContent = '魔镜';
-      this.lang = document.createElement('span');
-      this.lang.className = 'lang';
+      this.title = document.createElement('b');
+      this.lang = this._button('', () => this._toggleMenu());
+      this.lang.classList.add('lang');
       this.status = document.createElement('span');
       this.status.className = 'status';
-      this.pauseBtn = this._button('暂停', () => this.h.onPause());
-      const close = this._button('✕', () => this.h.onClose());
-      close.title = '关闭魔镜';
-      this.tab.append(title, this.lang, this.status, this.pauseBtn, close);
+      this.pauseBtn = this._button('', () => this.h.onPause());
+      this.closeBtn = this._button('✕', () => this.h.onClose());
+      this.tab.append(this.title, this.lang, this.status, this.pauseBtn, this.closeBtn);
+      this._texts();
       this.tab.addEventListener('pointerdown', (e) => {
         if (e.target.classList.contains('btn')) return;
         this._drag(e, 'move');
@@ -87,16 +99,116 @@
       return b;
     }
 
-    setLang(text) { this.lang.textContent = text; }
+    setLang(source, target) {
+      this.source = source || 'auto';
+      this.target = target;
+      this.lang.textContent = DM.text.langLabel(this.ui, this.source, target);
+      if (this.menu) this._fillMenu();
+    }
+
+    /** 界面语言跟母语：中文母语中文界面，其他英文界面。 */
+    setUiLang(lang) {
+      this.ui = lang;
+      this._texts();
+      this.setLang(this.source, this.target);
+    }
+
+    _texts() {
+      const t = (k) => DM.text.ui(this.ui, k);
+      this.title.textContent = t('mirror');
+      this.lang.title = t('langTitle');
+      this.closeBtn.title = t('close');
+      this.pauseBtn.textContent = t(this.paused ? 'resume' : 'pause');
+    }
+
+    // 语言按钮：和桌面版一样，点开选“原文 → 译成”，选了马上按新方向重翻
+    _toggleMenu() {
+      if (this.menu) {
+        this._closeMenu();
+        return;
+      }
+      this.menu = document.createElement('div');
+      this.menu.className = 'menu';
+      this.root.appendChild(this.menu);
+      this._fillMenu();
+      this._placeMenu();
+      this._outside = (e) => {
+        const path = e.composedPath ? e.composedPath() : [];
+        if (!path.includes(this.root.host)) this._closeMenu();
+      };
+      window.addEventListener('pointerdown', this._outside, true);
+    }
+
+    _closeMenu() {
+      if (!this.menu) return;
+      this.menu.remove();
+      this.menu = null;
+      window.removeEventListener('pointerdown', this._outside, true);
+    }
+
+    _fillMenu() {
+      const T = DM.text;
+      this.menu.replaceChildren();
+      const col = (head, items, cur, pick) => {
+        const c = document.createElement('div');
+        c.className = 'col';
+        const h = document.createElement('div');
+        h.className = 'head';
+        h.textContent = head;
+        c.appendChild(h);
+        for (const [key, label] of items) {
+          const it = document.createElement('div');
+          it.className = 'item' + (key === cur ? ' on' : '');
+          it.textContent = label;
+          it.addEventListener('click', (e) => {
+            e.stopPropagation();
+            pick(key);
+          });
+          c.appendChild(it);
+        }
+        return c;
+      };
+      const arrow = document.createElement('div');
+      arrow.className = 'arrow';
+      arrow.textContent = '→';
+      this.menu.append(
+        col(T.ui(this.ui, 'from'), Object.keys(T.SOURCES).map((k) => [k, T.ui(this.ui, 'src_' + k)]), this.source,
+          (k) => this._pick(k, this.target)),
+        arrow,
+        col(T.ui(this.ui, 'to'), Object.keys(T.NATIVE_NAMES).map((k) => [k, T.NATIVE_NAMES[k]]), this.target,
+          (k) => this._pick(this.source, k)),
+      );
+    }
+
+    _pick(source, target) {
+      this.setLang(source, target);
+      if (this.h.onLang) this.h.onLang(source, target);
+    }
+
+    _placeMenu() {
+      if (!this.menu) return;
+      const t = this.tab.getBoundingClientRect();
+      const m = this.menu.getBoundingClientRect();
+      const below = !this.tab.classList.contains('below');
+      let x = Math.min(this.lang.getBoundingClientRect().left - 6, window.innerWidth - m.width - 8);
+      let y = below ? t.bottom + 4 : t.top - m.height - 4;
+      if (y + m.height > window.innerHeight - 4) y = Math.max(4, t.top - m.height - 4);
+      this.menu.style.left = Math.max(4, x) + 'px';
+      this.menu.style.top = Math.max(4, y) + 'px';
+    }
 
     setStatus(text, level) {
       this.status.textContent = text;
       this.status.className = 'status ' + (level || '');
     }
 
-    setPaused(on) { this.pauseBtn.textContent = on ? '继续' : '暂停'; }
+    setPaused(on) {
+      this.paused = on;
+      this._texts();
+    }
 
     destroy() {
+      this._closeMenu();
       for (const el of [this.line, ...this.corners, ...Object.values(this.bands), this.tab]) el.remove();
     }
 
@@ -168,6 +280,7 @@
       const below = y - LINE - TAB_H < 0;
       this.tab.classList.toggle('below', below);
       place(this.tab, x - LINE, below ? y + h + LINE : y - LINE - TAB_H, tw, TAB_H);
+      this._placeMenu();
     }
   }
 

@@ -1,23 +1,47 @@
 {
   "manifest_version": 3,
-  "name": "桌面魔镜（浏览器版原型）",
-  "short_name": "魔镜",
-  "version": "0.1.0",
-  "description": "在网页上放一块可以拖动的“镜子”：镜框里是同一位置的译文，排版、字体、颜色和原网页一样；镜框外照常是原网页。",
-  "icons": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png" },
-  "action": {
-    "default_title": "打开 / 关闭魔镜（Alt+Shift+M）",
-    "default_icon": { "16": "icons/icon16.png", "32": "icons/icon32.png" }
+  "name": "__MSG_name__",
+  "short_name": "__MSG_short__",
+  "version": "0.2.0",
+  "description": "__MSG_desc__",
+  "default_locale": "en",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
   },
-  "background": { "service_worker": "background.js" },
+  "action": {
+    "default_title": "__MSG_action__",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
   "options_page": "options.html",
-  "permissions": ["activeTab", "scripting", "storage"],
-  "host_permissions": ["http://127.0.0.1/*", "http://localhost/*", "https://api.deepseek.com/*"],
-  "optional_host_permissions": ["https://*/*", "http://*/*"],
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1/*",
+    "http://localhost/*",
+    "https://api.deepseek.com/*"
+  ],
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://*/*"
+  ],
   "commands": {
     "toggle-mirror": {
-      "suggested_key": { "default": "Alt+Shift+M" },
-      "description": "打开 / 关闭魔镜"
+      "suggested_key": {
+        "default": "Alt+Shift+M"
+      },
+      "description": "__MSG_cmd__"
     }
   }
 }

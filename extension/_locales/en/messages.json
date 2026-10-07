@@ -1,0 +1,7 @@
+{
+  "name": { "message": "DeskMirror (browser preview)" },
+  "short": { "message": "DeskMirror" },
+  "desc": { "message": "A draggable mirror on any web page: inside the frame the same spot shows the translation, with the page's own layout, fonts and colors; outside, the page stays as it is." },
+  "action": { "message": "Open / close the mirror (Alt+Shift+M)" },
+  "cmd": { "message": "Open / close the mirror" }
+}

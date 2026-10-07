@@ -11,12 +11,74 @@
     ko: { name: 'Korean (한국어)', short: '韩' },
     id: { name: 'Indonesian (Bahasa Indonesia)', short: '印尼' },
   };
+  // 原文语言：auto 交给模型自己认；指定了就在提示词里说明，并且只翻这种文字（和桌面版的语言按钮一样）
+  const SOURCES = {
+    auto: { name: '', short: '自动', label: '自动识别' },
+    en: { name: 'English', short: '英', label: '英文' },
+    zh: { name: 'Chinese', short: '中', label: '中文' },
+    ja: { name: 'Japanese', short: '日', label: '日文' },
+    ko: { name: 'Korean', short: '韩', label: '韩文' },
+    id: { name: 'Indonesian', short: '印尼', label: '印尼文' },
+  };
+
+  // ------------------------------------------------------------------ 界面文字
+  // 和桌面版一样：母语是中文（简体或繁体）用中文界面，其他母语用英文界面。
+  // 语言名用各自的文字写（简体中文、English、日本語……），任何界面下都这样显示。
+  const NATIVE_NAMES = {
+    'zh-Hans': '简体中文', 'zh-Hant': '繁體中文', en: 'English', ja: '日本語', ko: '한국어', id: 'Bahasa Indonesia',
+  };
+  const UI = {
+    zh: {
+      mirror: '魔镜', pause: '暂停', resume: '继续', close: '关闭魔镜', langTitle: '原文和译成的语言',
+      from: '原文', to: '译成', ready: '就绪', paused: '已暂停', busy: '翻译中 {n}', error: '出错：{e}',
+      updated: '扩展已更新，请重新打开魔镜', disconnected: '后台断开了',
+      src_auto: '自动识别', src_en: '英文', src_zh: '中文', src_ja: '日文', src_ko: '韩文', src_id: '印尼文',
+      s_auto: '自动', s_en: '英', s_zh: '中', s_ja: '日', s_ko: '韩', s_id: '印尼',
+      t_zh_Hans: '中', t_zh_Hant: '繁', t_en: '英', t_ja: '日', t_ko: '韩', t_id: '印尼',
+    },
+    en: {
+      mirror: 'Mirror', pause: 'Pause', resume: 'Resume', close: 'Close the mirror', langTitle: 'Source and target languages',
+      from: 'Original', to: 'Translate into', ready: 'Ready', paused: 'Paused', busy: 'Translating {n}', error: 'Error: {e}',
+      updated: 'The extension was updated; open the mirror again', disconnected: 'Lost the connection to the extension',
+      src_auto: 'Auto-detect', src_en: 'English', src_zh: 'Chinese', src_ja: 'Japanese', src_ko: 'Korean', src_id: 'Indonesian',
+      s_auto: 'Auto', s_en: 'EN', s_zh: 'ZH', s_ja: 'JA', s_ko: 'KO', s_id: 'ID',
+      t_zh_Hans: 'ZH', t_zh_Hant: 'ZH-T', t_en: 'EN', t_ja: 'JA', t_ko: 'KO', t_id: 'ID',
+    },
+  };
+
+  function uiLang(native) {
+    return /^zh/.test(native || '') ? 'zh' : 'en';
+  }
+
+  function ui(lang, key, vars) {
+    let s = (UI[lang] && UI[lang][key]) || UI.en[key] || key;
+    if (vars) for (const k of Object.keys(vars)) s = s.replace('{' + k + '}', vars[k]);
+    return s;
+  }
+
+  /** 语言按钮上的字，如“自动→中”“Auto→EN”。 */
+  function langLabel(lang, source, target) {
+    return ui(lang, 's_' + (source || 'auto')) + '→' + ui(lang, 't_' + String(target).replace('-', '_'));
+  }
+
+  /** 第一次用时按浏览器语言猜母语。 */
+  function guessNative(browserLang) {
+    const l = String(browserLang || '').toLowerCase();
+    if (/^zh[-_](tw|hk|mo|hant)/.test(l)) return 'zh-Hant';
+    if (l.startsWith('zh')) return 'zh-Hans';
+    if (l.startsWith('ja')) return 'ja';
+    if (l.startsWith('ko')) return 'ko';
+    if (l.startsWith('id') || l.startsWith('in')) return 'id';
+    return 'en';
+  }
 
   // ------------------------------------------------------------------ 提示词
-  function systemPrompt(target) {
+  function systemPrompt(target, source) {
     const lang = (TARGETS[target] || { name: target }).name;
+    const src = SOURCES[source] && SOURCES[source].name;
     return [
-      `You translate web page text into ${lang}. Each input segment starts with a number like [1].`,
+      `You translate web page text into ${lang}. Each input segment starts with a number like [1].`
+        + (src ? ` The user says the text is mostly ${src}; read it as ${src}.` : ''),
       'Segments can contain inline tags: <gN>...</gN> wraps formatted words such as a link or bold text, and <xN/> '
         + 'stands for an image, a line break or a piece of code that stays as it is.',
       'Rules:',
@@ -181,6 +243,16 @@
     return /\p{L}/u.test(t);
   }
 
+  /** 指定了原文语言时，这段里有没有这种文字（没有就不翻，比如日文网页上的英文菜单）。 */
+  function matchesSource(text, source) {
+    if (!source || source === 'auto') return true;
+    const n = scriptCounts(text);
+    if (source === 'ja') return n.kana > 0 || n.han > 0;
+    if (source === 'zh') return n.han > 0;
+    if (source === 'ko') return n.hangul > 0;
+    return n.latin > 0;
+  }
+
   /** 已经是目标语言的明显情况（只按文字种类判断，拿不准就交给模型）。 */
   function isAlreadyTarget(text, target) {
     const n = scriptCounts(text);
@@ -256,8 +328,8 @@
   }
 
   const api = {
-    TARGETS, systemPrompt, userMessage, SegmentParser, stripThink,
-    parseTagged, stripTags, scriptCounts, hasWords, isAlreadyTarget, mockTranslate, hash,
+    TARGETS, SOURCES, NATIVE_NAMES, UI, uiLang, ui, langLabel, guessNative, systemPrompt, userMessage, SegmentParser, stripThink,
+    parseTagged, stripTags, scriptCounts, hasWords, isAlreadyTarget, matchesSource, mockTranslate, hash,
   };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else (root.__dm = root.__dm || {}).text = api;

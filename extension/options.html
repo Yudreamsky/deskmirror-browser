@@ -1,83 +1,122 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html>
 <head>
 <meta charset="utf-8">
-<title>桌面魔镜（浏览器版）设置</title>
+<title>DeskMirror</title>
 <style>
-  :root { color-scheme: light dark; --blue: #3d8bfd; --muted: #6b7280; --line: #d6dae1; --bg: #fff; --card: #f7f8fa; }
-  @media (prefers-color-scheme: dark) { :root { --muted: #9aa3af; --line: #3a3f47; --bg: #1c1e23; --card: #24272d; } }
+  :root { color-scheme: light dark; --blue: #3d8bfd; --muted: #6b7280; --line: #d6dae1; --bg: #fff; --card: #f7f8fa;
+    --ok: #16a34a; --err: #dc2626; --note: #eef5ff; }
+  @media (prefers-color-scheme: dark) {
+    :root { --muted: #9aa3af; --line: #3a3f47; --bg: #1c1e23; --card: #24272d; --ok: #4ade80; --err: #f87171; --note: #1e2a3d; }
+  }
   body { margin: 0; background: var(--bg); font: 14px/1.6 "Microsoft YaHei UI", "PingFang SC", system-ui, sans-serif; }
-  main { max-width: 640px; margin: 32px auto; padding: 0 20px; }
+  main { max-width: 660px; margin: 32px auto; padding: 0 20px; }
   h1 { font-size: 20px; margin: 0 0 4px; display: flex; align-items: center; gap: 10px; }
   h1 img { width: 28px; height: 28px; }
+  h2 { font-size: 15px; margin: 0 0 10px; }
   .sub { color: var(--muted); margin: 0 0 22px; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; margin-bottom: 16px; }
   label { display: block; font-weight: 600; margin: 12px 0 4px; }
-  label:first-child { margin-top: 0; }
+  h2 + label, .langs label { margin-top: 0; }
   input, select { width: 100%; box-sizing: border-box; padding: 7px 10px; border: 1px solid var(--line); border-radius: 6px;
     background: var(--bg); color: inherit; font: inherit; }
   .hint { color: var(--muted); font-size: 13px; margin-top: 4px; }
   .row { display: flex; gap: 10px; margin-top: 16px; align-items: center; flex-wrap: wrap; }
+  .inline { display: flex; gap: 8px; align-items: center; }
+  .inline input { flex: 1 1 auto; min-width: 0; }
+  .inline button { flex: none; }
+  .langs { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: end; margin-top: 14px; }
+  .langs .arrow { padding-bottom: 8px; color: var(--muted); }
   button { padding: 7px 16px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: inherit;
     font: inherit; cursor: pointer; }
   button.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
-  #result { font-size: 13px; }
-  #result.ok { color: #16a34a; } #result.err { color: #dc2626; }
+  button:disabled { opacity: .55; cursor: default; }
+  #models { margin-top: 6px; }
+  .msg { font-size: 13px; }
+  .msg.ok { color: var(--ok); } .msg.err { color: var(--err); }
+  .banner { background: var(--note); border: 1px solid var(--blue); border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; }
+  .notes { margin: 6px 0 0; padding-left: 20px; }
   ul { margin: 6px 0 0; padding-left: 20px; }
   kbd { font: 12px monospace; padding: 1px 5px; border: 1px solid var(--line); border-radius: 4px; }
+  [hidden] { display: none !important; }
 </style>
 </head>
 <body>
 <main>
-  <h1><img src="icons/icon48.png" alt="">桌面魔镜（浏览器版原型）</h1>
-  <p class="sub">在网页上放一块镜子：镜框里是同一位置的译文，镜框外照常是原网页。</p>
+  <h1><img src="icons/icon48.png" alt=""><span data-t="title"></span></h1>
+  <p class="sub" data-t="sub"></p>
+
+  <div class="banner" id="banner" hidden></div>
 
   <div class="card">
-    <label for="preset">翻译服务</label>
-    <select id="preset">
-      <option value="ollama">本机 Ollama（免费，文字不出本机）</option>
-      <option value="deepseek">DeepSeek</option>
-      <option value="openai">其他 OpenAI 兼容接口（通义千问、硅基流动、LM Studio……）</option>
-      <option value="mock">测试用假翻译（不联网，只看排版）</option>
-    </select>
-    <div id="fields">
-      <label for="baseUrl">服务地址</label>
-      <input id="baseUrl" spellcheck="false">
-      <label for="model">模型</label>
-      <input id="model" spellcheck="false">
-      <div id="keyRow">
-        <label for="apiKey">API Key</label>
-        <input id="apiKey" type="password" spellcheck="false" autocomplete="off">
-        <div class="hint">Key 只存在这台电脑的 Chrome 扩展存储里（不像桌面版那样用 Windows 账户加密），只发给上面这个服务地址。</div>
+    <h2 data-t="langCard"></h2>
+    <label for="native" data-t="native"></label>
+    <select id="native"></select>
+    <div class="hint" data-t="nativeHint"></div>
+    <div class="langs">
+      <div>
+        <label for="source" data-t="source"></label>
+        <select id="source"></select>
+      </div>
+      <div class="arrow">→</div>
+      <div>
+        <label for="target" data-t="target"></label>
+        <select id="target"></select>
       </div>
     </div>
-    <label for="target">译成</label>
-    <select id="target">
-      <option value="zh-Hans">简体中文</option>
-      <option value="zh-Hant">繁體中文</option>
-      <option value="en">English</option>
-      <option value="ja">日本語</option>
-      <option value="ko">한국어</option>
-      <option value="id">Bahasa Indonesia</option>
+    <div class="hint" data-t="dirHint"></div>
+  </div>
+
+  <div class="card">
+    <h2 data-t="service"></h2>
+    <label for="preset" data-t="svcLabel"></label>
+    <select id="preset">
+      <option value="ollama" data-t="svc_ollama"></option>
+      <option value="deepseek">DeepSeek</option>
+      <option value="openai" data-t="svc_openai"></option>
+      <option value="mock" data-t="svc_mock"></option>
     </select>
+    <div id="fields">
+      <label for="baseUrl" data-t="baseUrl"></label>
+      <input id="baseUrl" spellcheck="false">
+      <div id="keyRow">
+        <label for="apiKey" data-t="apiKey"></label>
+        <input id="apiKey" type="password" spellcheck="false" autocomplete="off">
+        <div class="hint" data-t="keyHint"></div>
+      </div>
+      <label for="model" data-t="model"></label>
+      <div class="inline">
+        <input id="model" spellcheck="false">
+        <button id="fetch" type="button" data-t="fetch"></button>
+      </div>
+      <select id="models" hidden></select>
+      <div class="msg" id="modelMsg"></div>
+    </div>
     <div class="row">
-      <button class="primary" id="save">保存</button>
-      <button id="test">测试连接</button>
-      <span id="result"></span>
+      <button class="primary" id="save" data-t="save"></button>
+      <button id="test" data-t="test"></button>
+      <span class="msg" id="result"></span>
     </div>
   </div>
 
   <div class="card">
-    <b>怎么用</b>
-    <ul>
-      <li>点工具栏上的“镜”图标，或按 <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd>，在当前网页打开魔镜；再按一次关掉。</li>
-      <li>拖动镜子上方的深色标签移动；拖蓝色边框调整大小。</li>
-      <li>按住 <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>O</kbd> 看原文。</li>
-      <li>镜子里的链接、按钮、输入框照常能点，点到的是下面的真网页。</li>
-      <li>Chrome 自带的 PDF 阅读器、chrome:// 页面、应用商店页面里放不进魔镜。</li>
-    </ul>
+    <h2 data-t="verCard"></h2>
+    <div class="inline">
+      <span id="version" style="flex:1"></span>
+      <button id="check" type="button" data-t="check"></button>
+      <button id="upgrade" type="button" class="primary" hidden></button>
+    </div>
+    <div class="msg" id="updateMsg"></div>
+    <ul class="notes" id="updateNotes" hidden></ul>
+  </div>
+
+  <div class="card">
+    <h2 data-t="howCard"></h2>
+    <ul id="how"></ul>
   </div>
 </main>
+<script src="content/text.js"></script>
+<script src="llm.js"></script>
 <script src="options.js"></script>
 </body>
 </html>

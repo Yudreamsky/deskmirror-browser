@@ -11,12 +11,16 @@ const DEFAULTS = {
   baseUrl: 'http://127.0.0.1:11434',
   model: 'gemma4:12b',
   apiKey: '',
-  target: 'zh-Hans',
+  source: 'auto',
 };
 
 async function settings() {
   const { settings: s } = await chrome.storage.local.get('settings');
-  return Object.assign({}, DEFAULTS, s || {});
+  const out = Object.assign({}, DEFAULTS, s || {});
+  if (!out.native) out.native = T.guessNative(chrome.i18n.getUILanguage());
+  if (!out.target) out.target = out.native;
+  LLM.setUiLang(T.uiLang(out.native));   // 错误提示跟界面语言
+  return out;
 }
 
 async function flash(tabId, text) {
@@ -47,9 +51,15 @@ chrome.commands.onCommand.addListener((cmd, tab) => {
   if (cmd === 'toggle-mirror') toggle(tab);
 });
 
-chrome.runtime.onInstalled.addListener(({ reason }) => {
-  if (reason === 'install') chrome.runtime.openOptionsPage();
-});
+// 第一次装好：打开设置页选母语和翻译服务；版本变了（更新）：打开设置页说明更新了什么
+function onInstalled({ reason, previousVersion }) {
+  const v = chrome.runtime.getManifest().version;
+  if (reason === 'install') chrome.tabs.create({ url: chrome.runtime.getURL('options.html#welcome') });
+  else if (reason === 'update' && previousVersion && previousVersion !== v) {
+    chrome.tabs.create({ url: chrome.runtime.getURL('options.html?from=' + encodeURIComponent(previousVersion) + '#updated') });
+  }
+}
+chrome.runtime.onInstalled.addListener(onInstalled);
 
 chrome.runtime.onConnect.addListener((port) => {
   if (port.name !== 'dm-translate') return;
@@ -85,7 +95,9 @@ chrome.runtime.onConnect.addListener((port) => {
 chrome.runtime.onMessage.addListener((m, _sender, reply) => {
   if (!m || m.type !== 'dm-test') return undefined;
   const cfg = Object.assign({}, DEFAULTS, m.settings || {});
-  LLM.testConnection(T, cfg, cfg.target)
+  if (!cfg.native) cfg.native = T.guessNative(chrome.i18n.getUILanguage());
+  LLM.setUiLang(T.uiLang(cfg.native));
+  LLM.testConnection(T, cfg, cfg.target || cfg.native)
     .then((text) => reply({ ok: true, text }))
     .catch((e) => reply({ ok: false, error: String((e && e.message) || e) }));
   return true;
