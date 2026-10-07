@@ -1,35 +1,27 @@
-// 桌面魔镜浏览器版：请求 OpenAI 兼容接口（DeepSeek、通义千问、Ollama 的 /v1 等），流式解析 “[n] 译文”。
+// 桌面魔镜浏览器版：请求翻译服务，流式解析 “[n] 译文”。
+//  - ollama：Ollama 原生接口 /api/chat（think=false 关掉思考，num_ctx 和桌面版一致，免得 Ollama 重新加载模型）
+//  - openai：OpenAI 兼容接口 /chat/completions（DeepSeek、通义千问、硅基流动、LM Studio……）；
+//    默认带 thinking=disabled（DeepSeek 默认会思考，翻译用不着，关掉快得多也省钱），服务不认就去掉重发并记住
 // 后台（service worker）用 importScripts 载入，Node 测试用 require 载入。
 (function (root) {
   'use strict';
 
-  function chatUrl(base) {
-    return base.replace(/\/+$/, '') + '/chat/completions';
+  const noThinkingParam = new Set();   // 不认 thinking 参数的服务地址
+
+  function trimBase(base) {
+    return String(base || '').trim().replace(/\/+$/, '');
   }
 
-  /**
-   * 翻译一批文字块。每段完整后回调 onSeg(i, text)；返回收到的段数。
-   * cfg: { baseUrl, model, apiKey }；req: { segments, target, context }
-   */
-  async function translateBatch(T, cfg, req, onSeg, signal) {
-    const headers = { 'Content-Type': 'application/json' };
-    if (cfg.apiKey) headers.Authorization = 'Bearer ' + cfg.apiKey;
-    const body = {
-      model: cfg.model,
-      stream: true,
-      temperature: 0.2,
-      messages: [
-        { role: 'system', content: T.systemPrompt(req.target) },
-        { role: 'user', content: T.userMessage(req.segments, req.context) },
-      ],
-    };
-    const res = await fetch(chatUrl(cfg.baseUrl), { method: 'POST', headers, body: JSON.stringify(body), signal });
-    if (!res.ok) {
-      let detail = '';
-      try { detail = (await res.text()).slice(0, 200); } catch (e) { /* 没有正文 */ }
-      throw new Error('HTTP ' + res.status + (detail ? ' ' + detail : ''));
-    }
-    const parser = new T.SegmentParser(req.segments.length, onSeg);
+  async function errorOf(res) {
+    let detail = '';
+    try { detail = (await res.text()).slice(0, 200); } catch (e) { /* 没有正文 */ }
+    if (res.status === 401 || res.status === 403) return new Error('API Key 不对或没有权限（HTTP ' + res.status + '）');
+    if (res.status === 404) return new Error('地址或模型名不对（HTTP 404）' + (detail ? ' ' + detail : ''));
+    if (res.status === 429) return new Error('请求太频繁或额度用完（HTTP 429）');
+    return new Error('服务返回错误 HTTP ' + res.status + (detail ? ' ' + detail : ''));
+  }
+
+  async function* lines(res) {
     const reader = res.body.getReader();
     const dec = new TextDecoder();
     let buf = '';
@@ -39,16 +31,77 @@
       buf += dec.decode(value, { stream: true });
       let i;
       while ((i = buf.indexOf('\n')) >= 0) {
-        const line = buf.slice(0, i).trim();
+        yield buf.slice(0, i).trim();
         buf = buf.slice(i + 1);
-        if (!line.startsWith('data:')) continue;
-        const data = line.slice(5).trim();
-        if (data === '[DONE]') continue;
-        try {
-          const j = JSON.parse(data);
+      }
+    }
+    if (buf.trim()) yield buf.trim();
+  }
+
+  /**
+   * 翻译一批文字块。每段完整后回调 onSeg(i, text)；返回收到的段数。
+   * cfg: { protocol, baseUrl, model, apiKey }；req: { segments, target, context }
+   */
+  async function translateBatch(T, cfg, req, onSeg, signal) {
+    const base = trimBase(cfg.baseUrl);
+    if (!base) throw new Error('还没有填写翻译服务地址');
+    if (!String(cfg.model || '').trim()) throw new Error('还没有填写模型名');
+    const messages = [
+      { role: 'system', content: T.systemPrompt(req.target) },
+      { role: 'user', content: T.userMessage(req.segments, req.context) },
+    ];
+    const parser = new T.SegmentParser(req.segments.length, onSeg);
+    if (cfg.protocol === 'ollama') {
+      const body = { model: cfg.model, messages, stream: true, think: false, keep_alive: '30m',
+        options: { temperature: 0.2, num_ctx: 4096 } };
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const res = await fetch(base + '/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body), signal });
+        if (!res.ok) {
+          const text = await res.text().catch(() => '');
+          if (attempt === 0 && res.status === 400 && /think/i.test(text)) {
+            delete body.think;   // 这个模型没有思考开关：去掉参数重发
+            continue;
+          }
+          throw new Error('Ollama 返回错误 HTTP ' + res.status + ' ' + text.slice(0, 160));
+        }
+        for await (const line of lines(res)) {
+          if (!line) continue;
+          let j;
+          try { j = JSON.parse(line); } catch (e) { continue; }
+          if (j.error) throw new Error('Ollama 报错：' + String(j.error).slice(0, 160));
+          const piece = j.message && j.message.content;
+          if (piece) parser.feedRaw(piece);
+          if (j.done) break;
+        }
+        break;
+      }
+    } else {
+      const headers = { 'Content-Type': 'application/json' };
+      if (cfg.apiKey) headers.Authorization = 'Bearer ' + cfg.apiKey;
+      const body = { model: cfg.model, messages, stream: true, temperature: 0.2 };
+      if (!noThinkingParam.has(base)) body.thinking = { type: 'disabled' };
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const res = await fetch(base + '/chat/completions', { method: 'POST', headers, body: JSON.stringify(body), signal });
+        if (!res.ok) {
+          if (attempt === 0 && body.thinking && (res.status === 400 || res.status === 422)) {
+            delete body.thinking;   // 可能不认这个参数：去掉重发一次，成功就记住这个服务
+            continue;
+          }
+          throw await errorOf(res);
+        }
+        if (attempt === 1) noThinkingParam.add(base);
+        for await (const line of lines(res)) {
+          if (!line.startsWith('data:')) continue;
+          const data = line.slice(5).trim();
+          if (data === '[DONE]') break;
+          let j;
+          try { j = JSON.parse(data); } catch (e) { continue; }
+          if (j.error) throw new Error('服务报错：' + JSON.stringify(j.error).slice(0, 160));
           const d = j.choices && j.choices[0] && j.choices[0].delta;
           if (d && d.content) parser.feedRaw(d.content);
-        } catch (e) { /* 不完整的行 */ }
+        }
+        break;
       }
     }
     parser.close();
@@ -63,7 +116,7 @@
     return out;
   }
 
-  const api = { translateBatch, testConnection, chatUrl };
+  const api = { translateBatch, testConnection };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else (root.__dm = root.__dm || {}).llm = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

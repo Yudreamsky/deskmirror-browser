@@ -50,7 +50,7 @@ export function ollamaTranslator(model = 'gemma4:12b', log = null) {
   return async (req, send) => {
     const t0 = Date.now();
     try {
-      await LLM.translateBatch(T, { baseUrl: 'http://127.0.0.1:11434/v1', model }, req,
+      await LLM.translateBatch(T, { protocol: 'ollama', baseUrl: 'http://127.0.0.1:11434', model }, req,
         (i, text) => send({ type: 'seg', id: req.id, i, text }));
       send({ type: 'done', id: req.id });
       if (log) log.push({ n: req.segments.length, ms: Date.now() - t0, src: req.segments });

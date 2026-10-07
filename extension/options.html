@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>桌面魔镜（浏览器版）设置</title>
+<style>
+  :root { color-scheme: light dark; --blue: #3d8bfd; --muted: #6b7280; --line: #d6dae1; --bg: #fff; --card: #f7f8fa; }
+  @media (prefers-color-scheme: dark) { :root { --muted: #9aa3af; --line: #3a3f47; --bg: #1c1e23; --card: #24272d; } }
+  body { margin: 0; background: var(--bg); font: 14px/1.6 "Microsoft YaHei UI", "PingFang SC", system-ui, sans-serif; }
+  main { max-width: 640px; margin: 32px auto; padding: 0 20px; }
+  h1 { font-size: 20px; margin: 0 0 4px; display: flex; align-items: center; gap: 10px; }
+  h1 img { width: 28px; height: 28px; }
+  .sub { color: var(--muted); margin: 0 0 22px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; margin-bottom: 16px; }
+  label { display: block; font-weight: 600; margin: 12px 0 4px; }
+  label:first-child { margin-top: 0; }
+  input, select { width: 100%; box-sizing: border-box; padding: 7px 10px; border: 1px solid var(--line); border-radius: 6px;
+    background: var(--bg); color: inherit; font: inherit; }
+  .hint { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .row { display: flex; gap: 10px; margin-top: 16px; align-items: center; flex-wrap: wrap; }
+  button { padding: 7px 16px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: inherit;
+    font: inherit; cursor: pointer; }
+  button.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+  #result { font-size: 13px; }
+  #result.ok { color: #16a34a; } #result.err { color: #dc2626; }
+  ul { margin: 6px 0 0; padding-left: 20px; }
+  kbd { font: 12px monospace; padding: 1px 5px; border: 1px solid var(--line); border-radius: 4px; }
+</style>
+</head>
+<body>
+<main>
+  <h1><img src="icons/icon48.png" alt="">桌面魔镜（浏览器版原型）</h1>
+  <p class="sub">在网页上放一块镜子：镜框里是同一位置的译文，镜框外照常是原网页。</p>
+
+  <div class="card">
+    <label for="preset">翻译服务</label>
+    <select id="preset">
+      <option value="ollama">本机 Ollama（免费，文字不出本机）</option>
+      <option value="deepseek">DeepSeek</option>
+      <option value="openai">其他 OpenAI 兼容接口（通义千问、硅基流动、LM Studio……）</option>
+      <option value="mock">测试用假翻译（不联网，只看排版）</option>
+    </select>
+    <div id="fields">
+      <label for="baseUrl">服务地址</label>
+      <input id="baseUrl" spellcheck="false">
+      <label for="model">模型</label>
+      <input id="model" spellcheck="false">
+      <div id="keyRow">
+        <label for="apiKey">API Key</label>
+        <input id="apiKey" type="password" spellcheck="false" autocomplete="off">
+        <div class="hint">Key 只存在这台电脑的 Chrome 扩展存储里（不像桌面版那样用 Windows 账户加密），只发给上面这个服务地址。</div>
+      </div>
+    </div>
+    <label for="target">译成</label>
+    <select id="target">
+      <option value="zh-Hans">简体中文</option>
+      <option value="zh-Hant">繁體中文</option>
+      <option value="en">English</option>
+      <option value="ja">日本語</option>
+      <option value="ko">한국어</option>
+      <option value="id">Bahasa Indonesia</option>
+    </select>
+    <div class="row">
+      <button class="primary" id="save">保存</button>
+      <button id="test">测试连接</button>
+      <span id="result"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <b>怎么用</b>
+    <ul>
+      <li>点工具栏上的“镜”图标，或按 <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd>，在当前网页打开魔镜；再按一次关掉。</li>
+      <li>拖动镜子上方的深色标签移动；拖蓝色边框调整大小。</li>
+      <li>按住 <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>O</kbd> 看原文。</li>
+      <li>镜子里的链接、按钮、输入框照常能点，点到的是下面的真网页。</li>
+      <li>Chrome 自带的 PDF 阅读器、chrome:// 页面、应用商店页面里放不进魔镜。</li>
+    </ul>
+  </div>
+</main>
+<script src="options.js"></script>
+</body>
+</html>

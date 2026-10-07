@@ -217,7 +217,9 @@
     DM.loaded = true;
     const startWithSettings = () => {
       chrome.storage.local.get('settings').then(({ settings }) => {
-        DM.config = Object.assign({}, settings || {});
+        const st = settings || {};
+        // 本机 Ollama 一次一批（显卡排队），云端服务三批并发
+        DM.config = Object.assign({ concurrency: (st.protocol || 'ollama') === 'ollama' ? 1 : 3 }, st);
         DM.start();
       });
     };
