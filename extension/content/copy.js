@@ -36,6 +36,29 @@
     return s + '>';
   }
 
+  /**
+   * 空 iframe 一开始是怪异模式；写一个和原网页一样的 doctype 进去。
+   * 有的网站（YouTube 等）开了 Trusted Types，直接 write 字符串会被拒，要先建一个策略；
+   * 策略名也被限制时，只 open 不 close：open 之后就是标准模式，一直开着也不影响显示。
+   */
+  function writeDoctype(cdoc) {
+    const html = doctypeOf(document);
+    try {
+      cdoc.open();
+      cdoc.write(html);
+      cdoc.close();
+      return;
+    } catch (e) { /* Trusted Types */ }
+    try {
+      if (!DM.ttPolicy) DM.ttPolicy = trustedTypes.createPolicy('deskmirror', { createHTML: (x) => x });
+      cdoc.open();
+      cdoc.write(DM.ttPolicy.createHTML(html));
+      cdoc.close();
+      return;
+    } catch (e) { /* 策略名受限 */ }
+    try { cdoc.open(); } catch (e) { /* 没办法了，按怪异模式 */ }
+  }
+
   function rulesText(rules) {
     let out = '';
     for (const r of rules) out += r.cssText + '\n';
@@ -95,9 +118,7 @@
       this._sizeFrame();
       const cdoc = frame.contentDocument;
       // 保持和原网页同样的排版模式（标准 / 有限怪异 / 怪异模式），否则排版会不一样
-      cdoc.open();
-      cdoc.write(doctypeOf(document));
-      cdoc.close();
+      writeDoctype(cdoc);
       this.cdoc = cdoc;
       this.cwin = frame.contentWindow;
 
