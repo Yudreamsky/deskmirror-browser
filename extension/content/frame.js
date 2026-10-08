@@ -340,7 +340,7 @@
       this.lang.title = t('langTitle');
       this.closeBtn.title = t('close');
       this.foldBtn.title = t('fold');
-      this.bubble.title = t('unfold');
+      this._bubbleTitle();
       this.pauseBtn.textContent = t(this.paused ? 'resume' : 'pause');
     }
 
@@ -447,6 +447,12 @@
       this.menu.style.top = Math.max(4, y) + 'px';
     }
 
+    /** 气泡的提示：怎么展开，再加上用量（收起时标签看不见，鼠标停在气泡上也能看到发送、接收了多少）。 */
+    _bubbleTitle() {
+      const t = this.traffic.hidden ? '' : this.traffic.textContent;
+      this.bubble.title = DM.text.ui(this.ui, 'unfold') + (t ? '\n' + t + '\n' + (this.traffic.title || '') : '');
+    }
+
     /**
      * 像网速那样显示发送（↑，橙色）、接收（↓，蓝色）的 token：t = { up: '1.2k', down: '3.4k', approx }，null 就不显示；
      * approx：有一部分是按字数估的，前面加“≈”。tip 是鼠标停上去看的详情。
@@ -463,6 +469,7 @@
       };
       this.traffic.replaceChildren(...(t ? [(t.approx ? '≈' : ''), span('up', '↑' + t.up), ' ', span('down', '↓' + t.down)] : []));
       this.traffic.hidden = !text;
+      this._bubbleTitle();
       this.layout();
     }
 

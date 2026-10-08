@@ -1,5 +1,8 @@
 # DeskMirror for browsers · Changes
 
+## 0.5.2 (2026-10-08)
+- While collapsed, hovering over the bubble also shows the tokens sent and received since the mirror opened.
+
 ## 0.5.1 (2026-10-08)
 - Liquid Glass now refracts at the edges: the rims of the tab, language menu and bubble stretch and bend what is behind them (like thick curved glass), with a hint of color dispersion. The glass is clearer, and text has a soft halo so it stays readable on busy backgrounds. Scrolling stays as smooth as before.
 

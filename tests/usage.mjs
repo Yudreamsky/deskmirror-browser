@@ -84,6 +84,11 @@ try {
       `鼠标停上去：“${st.tip.replace(/\n/g, ' ')}”`);
     check(st.closeOk, `标签宽 ${st.tab} px，关闭按钮没有被挤出去`);
     await page.shot(path.join(ROOT, 'tests/out/usage-tab.png'));
+    // 收起成气泡：标签看不见了，鼠标停在气泡上也能看到用量
+    const bub = await page.eval(`(() => { const f = __dm.session.frame; f.fold();
+      return new Promise((ok) => setTimeout(() => ok(f.bubble.title), 900)); })()`, ctx);
+    check(bub.includes('↑' + T.shortCount(expIn) + ' ↓' + T.shortCount(expOut)) && /发送 [\d,]+ 个 token/.test(bub),
+      `收起成气泡后，鼠标停在气泡上：“${bub.replace(/\n/g, ' / ')}”`);
     // 再点一次图标关掉、再打开：从 0 重新算
     await sw.eval(`chrome.tabs.query({ url: ${JSON.stringify(url)} }).then(async ([t]) => { await toggle(t); await new Promise((r) => setTimeout(r, 300)); await toggle(t); return 1; })`);
     await sleep(800);
