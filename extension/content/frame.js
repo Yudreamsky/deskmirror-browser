@@ -82,13 +82,17 @@
   box-shadow: 0 0 0 1px rgba(61, 139, 253, 0.55), 0 14px 36px rgba(0, 0, 0, 0.18), inset 0 0 0 1px rgba(255, 255, 255, 0.3); }
 :host([data-skin="glass"]) .corner { display: none; }
 :host([data-skin="glass"]) .tab, :host([data-skin="glass"]) .menu {
-  color: #1d1d1f; border: 1px solid rgba(255, 255, 255, 0.75);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(246, 247, 250, 0.52));
-  -webkit-backdrop-filter: blur(22px) saturate(180%); backdrop-filter: blur(22px) saturate(180%);
+  color: #1d1d1f; border: 1px solid rgba(255, 255, 255, 0.7);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.28) 0%, rgba(250, 250, 252, 0.66) 34%, rgba(250, 250, 252, 0.66) 66%, rgba(255, 255, 255, 0.28) 100%);
   box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.95), inset 0 -1px 1px rgba(0, 0, 0, 0.05), 0 8px 26px rgba(0, 0, 0, 0.16);
+  text-shadow: 0 0 6px rgba(255, 255, 255, 0.85), 0 0 1px rgba(255, 255, 255, 0.9);
   font-family: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "PingFang SC", system-ui, sans-serif; }
-:host([data-skin="glass"]) .tab { border-radius: ${TAB_H / 2}px; padding: 0 4px 0 12px; gap: 7px; }
-:host([data-skin="glass"]) .menu { border-radius: 16px; padding: 8px; }
+/* 边缘折射：位移滤镜（见 glassFilter），再轻轻模糊、提一点饱和度 */
+:host([data-skin="glass"]) .tab { border-radius: ${TAB_H / 2}px; padding: 0 4px 0 12px; gap: 7px;
+  -webkit-backdrop-filter: url(#dm-lg-tab) blur(1px) saturate(150%); backdrop-filter: url(#dm-lg-tab) blur(1px) saturate(150%); }
+:host([data-skin="glass"]) .menu { border-radius: 16px; padding: 8px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(246, 247, 250, 0.56));
+  -webkit-backdrop-filter: url(#dm-lg-menu) blur(4px) saturate(150%); backdrop-filter: url(#dm-lg-menu) blur(4px) saturate(150%); }
 :host([data-skin="glass"]) .btn { color: #1d1d1f; background: rgba(255, 255, 255, 0.6); border-radius: 10px;
   box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9); }
 :host([data-skin="glass"]) .btn:hover { background: rgba(255, 255, 255, 0.92); }
@@ -108,14 +112,16 @@
 :host([data-skin="glass"]) .menu .arrow { color: #8e8e93; }
 :host([data-skin="glass"]) .morph { border: 1.5px solid rgba(255, 255, 255, 0.9); box-shadow: 0 0 0 1px rgba(61, 139, 253, 0.6); }
 :host([data-skin="glass"]) .bubble { color: ${BLUE}; border: 1px solid rgba(255, 255, 255, 0.8);
-  background: radial-gradient(120% 120% at 30% 18%, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.55) 55%, rgba(236, 240, 248, 0.42));
-  -webkit-backdrop-filter: blur(16px) saturate(180%); backdrop-filter: blur(16px) saturate(180%);
+  background: radial-gradient(120% 120% at 30% 18%, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.12) 55%, rgba(236, 240, 248, 0.08));
+  -webkit-backdrop-filter: url(#dm-lg-bubble) blur(0.5px) saturate(140%); backdrop-filter: url(#dm-lg-bubble) blur(0.5px) saturate(140%);
+  text-shadow: 0 0 6px rgba(255, 255, 255, 0.95);
   box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.95), inset 0 -3px 8px rgba(0, 0, 0, 0.07), 0 8px 24px rgba(0, 0, 0, 0.22); }
 
 /* 液态玻璃（深色）：系统是深色模式时换成烟灰玻璃 */
 @media (prefers-color-scheme: dark) {
   :host([data-skin="glass"]) .tab, :host([data-skin="glass"]) .menu { color: #f5f5f7; border-color: rgba(255, 255, 255, 0.2);
-    background: linear-gradient(180deg, rgba(72, 72, 78, 0.62), rgba(28, 28, 32, 0.5));
+    background: linear-gradient(180deg, rgba(72, 72, 78, 0.3) 0%, rgba(30, 30, 34, 0.64) 34%, rgba(30, 30, 34, 0.64) 66%, rgba(72, 72, 78, 0.3) 100%);
+    text-shadow: 0 0 6px rgba(0, 0, 0, 0.75), 0 0 1px rgba(0, 0, 0, 0.8);
     box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.28), inset 0 -1px 1px rgba(0, 0, 0, 0.2), 0 8px 26px rgba(0, 0, 0, 0.4); }
   :host([data-skin="glass"]) .btn { color: #f5f5f7; background: rgba(255, 255, 255, 0.14); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18); }
   :host([data-skin="glass"]) .btn:hover { background: rgba(255, 255, 255, 0.26); }
@@ -130,8 +136,9 @@
   :host([data-skin="glass"]) .traffic .down { color: #8cc8ff; }
   :host([data-skin="glass"]) .menu .head, :host([data-skin="glass"]) .menu .arrow { color: #98989d; }
   :host([data-skin="glass"]) .menu .item:hover { background: rgba(255, 255, 255, 0.1); }
-  :host([data-skin="glass"]) .bubble { color: #fff; border-color: rgba(255, 255, 255, 0.25);
-    background: radial-gradient(120% 120% at 30% 18%, rgba(120, 160, 230, 0.75), rgba(40, 60, 100, 0.55) 60%, rgba(20, 24, 34, 0.5));
+  :host([data-skin="glass"]) .menu { background: linear-gradient(180deg, rgba(72, 72, 78, 0.7), rgba(28, 28, 32, 0.6)); }
+  :host([data-skin="glass"]) .bubble { color: #fff; border-color: rgba(255, 255, 255, 0.25); text-shadow: 0 0 6px rgba(0, 0, 0, 0.8);
+    background: radial-gradient(120% 120% at 30% 18%, rgba(120, 160, 230, 0.55), rgba(40, 60, 100, 0.3) 60%, rgba(20, 24, 34, 0.26));
     box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.35), inset 0 -3px 8px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.45); }
 }
 `;
@@ -140,6 +147,96 @@
     nw: 'nwse-resize', se: 'nwse-resize' };
 
   const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
+
+  // ---------------------------------------------------------------- 液态玻璃的边缘折射
+  // 位移图：圆角矩形边缘一圈（bezel 宽）往里取样，越靠边取得越远——背后的内容在边上被拉伸、弯折，像弧形的厚玻璃边。
+  // R、G 通道是横向、纵向的位移（128 = 不动），给 feDisplacementMap 用。
+  function glassMap(w, h, r, bezel, shift) {
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    const g = c.getContext('2d');
+    const img = g.createImageData(w, h);
+    const d = img.data;
+    const hw = w / 2, hh = h / 2, rr = Math.min(r, hw, hh);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const px = x + 0.5 - hw, py = y + 0.5 - hh;
+        const qx = Math.abs(px) - (hw - rr), qy = Math.abs(py) - (hh - rr);
+        const inside = -(Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - rr);
+        let nx = 0, ny = 0;
+        if (qx > 0 && qy > 0) {
+          const L = Math.hypot(qx, qy) || 1;
+          nx = (qx / L) * Math.sign(px);
+          ny = (qy / L) * Math.sign(py);
+        } else if (qx > qy) nx = Math.sign(px);
+        else ny = Math.sign(py);
+        const t = inside < bezel ? 1 - Math.max(inside, 0) / bezel : 0;
+        const m = -t * t;                       // 往里取样，靠边最多 shift 像素
+        const i = (y * w + x) * 4;
+        d[i] = 128 + Math.round(nx * m * 127);
+        d[i + 1] = 128 + Math.round(ny * m * 127);
+        d[i + 2] = 128;
+        d[i + 3] = 255;
+      }
+    }
+    g.putImageData(img, 0, 0);
+    return c.toDataURL();
+  }
+
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+
+  /**
+   * 建（或按新尺寸更新）一个折射滤镜：三个颜色通道各自位移、位移量差一点点（边上有一丝色散），再合回来。
+   * 滤镜放在影子 DOM 里，backdrop-filter: url(#id) 就能引用到（Chrome）。
+   */
+  function glassFilter(root, id, w, h, r, bezel, shift) {
+    w = Math.max(2, Math.round(w));
+    h = Math.max(2, Math.round(h));
+    let svg = root.querySelector('svg.dm-defs');
+    if (!svg) {
+      svg = document.createElementNS(SVG_NS, 'svg');
+      svg.setAttribute('class', 'dm-defs');
+      svg.setAttribute('width', '0');
+      svg.setAttribute('height', '0');
+      svg.setAttribute('aria-hidden', 'true');
+      svg.style.cssText = 'position: fixed; width: 0; height: 0; overflow: hidden; pointer-events: none;';
+      root.appendChild(svg);
+    }
+    let f = svg.querySelector('#' + id);
+    const key = [w, h, r, bezel, shift].join(',');
+    if (f && f.getAttribute('data-key') === key) return;
+    if (!f) {
+      f = document.createElementNS(SVG_NS, 'filter');
+      f.id = id;
+      f.setAttribute('filterUnits', 'userSpaceOnUse');
+      f.setAttribute('primitiveUnits', 'userSpaceOnUse');
+      f.setAttribute('color-interpolation-filters', 'sRGB');
+      const el = (tag, attrs) => {
+        const e = document.createElementNS(SVG_NS, tag);
+        for (const k of Object.keys(attrs)) e.setAttribute(k, attrs[k]);
+        f.appendChild(e);
+        return e;
+      };
+      el('feImage', { result: 'map', preserveAspectRatio: 'none' });
+      const only = { r: '1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0', g: '0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 1 0',
+        b: '0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 1 0' };
+      for (const c of ['r', 'g', 'b']) {
+        el('feDisplacementMap', { in: 'SourceGraphic', in2: 'map', xChannelSelector: 'R', yChannelSelector: 'G', result: 'd' + c, 'data-ch': c });
+        el('feColorMatrix', { in: 'd' + c, type: 'matrix', values: only[c], result: c });
+      }
+      el('feBlend', { in: 'r', in2: 'g', mode: 'screen', result: 'rg' });
+      el('feBlend', { in: 'rg', in2: 'b', mode: 'screen' });
+      svg.appendChild(f);
+    }
+    f.setAttribute('data-key', key);
+    for (const [k, v] of [['x', 0], ['y', 0], ['width', w], ['height', h]]) f.setAttribute(k, v);
+    const img = f.querySelector('feImage');
+    for (const [k, v] of [['x', 0], ['y', 0], ['width', w], ['height', h]]) img.setAttribute(k, v);
+    img.setAttribute('href', glassMap(w, h, r, bezel, shift));
+    const k = { r: 1, g: 1.025, b: 1.05 };    // 红绿蓝位移差一点：边上一丝色散
+    for (const dm of f.querySelectorAll('feDisplacementMap')) dm.setAttribute('scale', (2 * shift * k[dm.getAttribute('data-ch')]).toFixed(2));
+  }
   /** 页面可用宽度（不含竖滚动条），气泡贴右边时不压住滚动条。 */
   const viewW = () => document.documentElement.clientWidth || window.innerWidth;
   const viewH = () => document.documentElement.clientHeight || window.innerHeight;
@@ -251,7 +348,21 @@
     setSkin(skin) {
       this.skin = skin === 'glass' ? 'glass' : 'classic';
       this.root.host.setAttribute('data-skin', this.skin);
+      if (this.skin === 'glass') glassFilter(this.root, 'dm-lg-bubble', BUB, BUB, BUB / 2, 15, 9);
       this.layout();
+    }
+
+    /** 液态玻璃：标签、菜单按现在的尺寸更新折射滤镜。 */
+    _refract() {
+      if (this.skin !== 'glass') return;
+      if (!this.folded) {
+        const t = this.tab.getBoundingClientRect();
+        if (t.width > 2) glassFilter(this.root, 'dm-lg-tab', t.width, t.height, TAB_H / 2, 9, 6);
+      }
+      if (this.menu) {
+        const m = this.menu.getBoundingClientRect();
+        if (m.width > 2) glassFilter(this.root, 'dm-lg-menu', m.width, m.height, 16, 12, 8);
+      }
     }
 
     /** 开口的圆角（液态玻璃是圆角镜框；复制品的开口跟着切成圆角）。 */
@@ -270,6 +381,7 @@
       this.root.appendChild(this.menu);
       this._fillMenu();
       this._placeMenu();
+      this._refract();
       this._outside = (e) => {
         const path = e.composedPath ? e.composedPath() : [];
         if (!path.includes(this.root.host)) this._closeMenu();
@@ -628,6 +740,7 @@
         this._wide = want > tw;
       }
       this._placeMenu();
+      this._refract();
     }
   }
 

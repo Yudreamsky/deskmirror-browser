@@ -36,6 +36,12 @@ try {
           clip: __dm.session.copy.clip.style.clipPath }; })()`);
       check(g.skin === 'glass' && /blur/.test(g.blur) && g.radius === '13px' && g.corner === 'none' && /A ?12 12/.test(g.clip),
         `液态玻璃：标签 ${g.blur}、圆角 ${g.radius}；镜框四角的方块藏起来，开口是圆角（剪裁路径里有圆弧）`);
+      const rf = await page.eval(`(() => { const f = __dm.session.frame; const fl = f.root.querySelector('filter#dm-lg-tab');
+        const img = fl && fl.querySelector('feImage'); const tr = f.tab.getBoundingClientRect();
+        return { url: getComputedStyle(f.tab).backdropFilter.includes('dm-lg-tab'), map: img ? img.getAttribute('href').slice(0, 22) : '',
+          w: fl ? +fl.getAttribute('width') : 0, tab: Math.round(tr.width), maps: f.root.querySelectorAll('feDisplacementMap').length }; })()`);
+      check(rf.url && rf.map === 'data:image/png;base64,' && Math.abs(rf.w - rf.tab) <= 1 && rf.maps >= 6,
+        `边缘折射：标签用位移滤镜（位移图 ${rf.w} px 宽，和标签一样宽；红绿蓝三路位移，共 ${rf.maps} 个）`);
     }
     await page.shot(path.join(OUT, `bubble-${skin}-open.png`));
     const before = await state();
