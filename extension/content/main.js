@@ -207,15 +207,14 @@
       frame.setTraffic(t.n ? { up: T.shortCount(t.in), down: T.shortCount(t.out), approx: t.est } : null, tip);
     };
     s.showTraffic = showTraffic;
-    if ('onUsage' in backend) {
-      backend.onUsage = (u) => {
-        s.traffic.in += u.in || 0;
-        s.traffic.out += u.out || 0;
-        s.traffic.n += u.n || 1;
-        s.traffic.est = s.traffic.est || !!u.est;
-        showTraffic();
-      };
-    }
+    s.addUsage = (u) => {
+      s.traffic.in += u.in || 0;
+      s.traffic.out += u.out || 0;
+      s.traffic.n += u.n || 1;
+      s.traffic.est = s.traffic.est || !!u.est;
+      showTraffic();
+    };
+    if ('onUsage' in backend) backend.onUsage = s.addUsage;
     if ('onEngine' in backend) {
       backend.onEngine = (m) => {
         s.engine = m.idx > 0 ? m : null;

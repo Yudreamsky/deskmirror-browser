@@ -236,7 +236,7 @@
       const cdoc = this.cdoc;
       switch (orig.nodeType) {
         case 1: {
-          if (orig === this.shell.host) return null;
+          if (orig === this.shell.host || orig.hasAttribute('data-deskmirror-badge')) return null;
           const tag = orig.localName;
           let el;
           try {
@@ -881,7 +881,7 @@
       const walk = (start) => {
         const tw = document.createTreeWalker(start, NodeFilter.SHOW_ELEMENT, {
           acceptNode: (el) => {
-            if (el === this.shell.host) return NodeFilter.FILTER_REJECT;
+            if (el === this.shell.host || el.hasAttribute('data-deskmirror-badge')) return NodeFilter.FILTER_REJECT;
             const cs = getComputedStyle(el);
             if (cs.display === 'none') return NodeFilter.FILTER_REJECT;
             if (cs.position === 'fixed') {

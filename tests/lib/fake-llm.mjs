@@ -19,7 +19,10 @@ export function fakeService(mode) {
       try { j = JSON.parse(body); } catch (e) { /* 空 */ }
       const user = (j.messages || []).find((m) => m.role === 'user');
       const segs = [...String(user ? user.content : '').matchAll(/^\[(\d+)\] (.*)$/gm)].map((m) => m[2]);
-      svc.hits.push({ mode: svc.mode, segments: segs, streamOptions: !!j.stream_options, thinking: !!j.thinking });
+      const sys = (j.messages || []).find((m) => m.role === 'system');
+      const src = /read it as (\w+)/.exec(sys ? sys.content : '');
+      svc.hits.push({ mode: svc.mode, segments: segs, streamOptions: !!j.stream_options, thinking: !!j.thinking,
+        source: src ? ({ Chinese: 'zh', English: 'en', Japanese: 'ja', Korean: 'ko', Indonesian: 'id' })[src[1]] || src[1] : 'auto' });
       if (svc.rejectUsage && j.stream_options) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end('{"error":{"message":"Unrecognized request argument supplied: stream_options"}}');
@@ -36,6 +39,14 @@ export function fakeService(mode) {
         return;
       }
       if (svc.mode === 'hang') return;           // 一直不回话
+      if (svc.delay) {
+        setTimeout(() => answer(j, segs, res), svc.delay);
+        return;
+      }
+      answer(j, segs, res);
+    });
+  });
+  const answer = (j, segs, res) => {
       res.writeHead(200, { 'Content-Type': 'text/event-stream' });
       const send = (text) => res.write('data: ' + JSON.stringify({ choices: [{ delta: { content: text } }] }) + '\n\n');
       if (svc.mode === 'half') {                 // 译出前几段后连接断开
@@ -50,8 +61,7 @@ export function fakeService(mode) {
       }
       res.write('data: [DONE]\n\n');
       res.end();
-    });
-  });
+  };
   return new Promise((resolve) => server.listen(0, '127.0.0.1', () => {
     svc.url = `http://127.0.0.1:${server.address().port}`;
     svc.close = () => { server.closeAllConnections(); server.close(); };

@@ -7,7 +7,7 @@ const T = self.__dm.text;
 const PS = self.__dm.presets;
 const C = self.__dm.chain;
 const LLM = self.__dm.llm;
-const CONTENT = ['content/text.js', 'content/copy.js', 'content/units.js', 'content/frame.js', 'content/main.js'];
+const CONTENT = ['content/text.js', 'content/copy.js', 'content/units.js', 'content/frame.js', 'content/field.js', 'content/main.js'];
 
 const DEFAULTS = {
   protocol: 'ollama',

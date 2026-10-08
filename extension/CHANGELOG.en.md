@@ -1,5 +1,8 @@
 # DeskMirror for browsers · Changes
 
+## 0.6.0 (2026-10-08)
+- Input box translation: press Space three times in a text box on a page (at most half a second between presses) to translate what you typed, in your own language, into the "Translate input boxes into" language and replace it; Ctrl+Z undoes it. Works in single-line, multi-line and rich-text boxes; spaces for indentation or while choosing IME characters do not trigger it, and nothing is replaced if you keep typing meanwhile. Works on pages where you have opened the mirror, even after closing it.
+
 ## 0.5.3 (2026-10-08)
 - The Liquid Glass language menu is much less transparent (light and dark), so what is behind it no longer gets in the way of reading.
 

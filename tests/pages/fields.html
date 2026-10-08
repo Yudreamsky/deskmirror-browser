@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Input boxes</title>
+<!-- 测试页：输入框翻译（连按三次空格）。单行框、多行框、可编辑区域、像 React 那样自己管状态的框、写代码的框 -->
+<style>
+  body { font: 15px/1.5 system-ui, sans-serif; margin: 30px; }
+  textarea, input, [contenteditable] { display: block; width: 520px; margin: 10px 0 18px; font: inherit; padding: 6px 8px;
+    border: 1px solid #bbb; border-radius: 6px; }
+  textarea { height: 70px; }
+  [contenteditable] { min-height: 50px; }
+</style>
+</head>
+<body>
+<h1>Reply to the thread</h1>
+<textarea id="ta"></textarea>
+<input id="in" type="text">
+<input id="in2" type="text">
+<div id="ce" contenteditable="true"></div>
+<input id="rx" type="text">
+<textarea id="code"></textarea>
+<script>
+  // 像 React 的受控输入框：只认 input 事件更新自己的状态
+  window.rxState = '';
+  document.getElementById('rx').addEventListener('input', (e) => { window.rxState = e.target.value; });
+</script>
+</body>
+</html>

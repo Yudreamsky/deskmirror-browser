@@ -11,7 +11,7 @@ export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
 export const T = require(path.join(ROOT, 'extension/content/text.js'));
 const LLM = require(path.join(ROOT, 'extension/llm.js'));
 
-export const CONTENT_FILES = ['text.js', 'copy.js', 'units.js', 'frame.js', 'main.js'];
+export const CONTENT_FILES = ['text.js', 'copy.js', 'units.js', 'frame.js', 'field.js', 'main.js'];
 
 export function bundle() {
   return CONTENT_FILES.map((f) => fs.readFileSync(path.join(ROOT, 'extension/content', f), 'utf8')).join('\n;\n');

@@ -24,6 +24,7 @@ This is the browser companion of [DeskMirror](https://github.com/Yudreamsky/desk
 - The tab shows the tokens sent (↑) and received (↓) since the mirror opened; hover over it to see exact numbers.
 - Click `–` on the tab to collapse the mirror into a bubble. Drag the bubble to either side and it snaps to the edge; click it to bring the mirror back where it was.
 - Two skins under *Appearance* in Settings: Classic, or Liquid Glass (frosted and rounded, follows the system light or dark mode).
+- Press Space three times in a text box to translate what you typed into the language set under *Translate input boxes into*; Ctrl+Z undoes it. This works on pages where you have opened the mirror, even after closing it.
 
 ## Translation services
 
@@ -50,6 +51,7 @@ node tests\chain.mjs
 node tests\canvas.mjs
 node tests\usage.mjs
 node tests\bubble.mjs
+node tests\field.mjs
 node tools\pack.mjs
 ```
 

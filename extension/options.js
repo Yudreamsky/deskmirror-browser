@@ -16,6 +16,8 @@ const TEXT = {
     langCard: '语言', native: '母语',
     nativeHint: '界面语言跟着母语（中文母语用中文界面，其他用英文界面），译文默认译成母语。',
     source: '原文', target: '译成',
+    inputTarget: '输入框翻译成',
+    inputHint: '在网页的输入框里连按三次空格，把框里的字翻译成这种语言并直接替换（按 Ctrl+Z 撤回）。在打开过魔镜的网页上才能用，打开后关掉魔镜也行。',
     dirHint: '指定原文后只翻这种文字（比如日文网页上的英文菜单就不翻）。镜框标签上的语言按钮也能随时切换，选了马上按新方向重翻；这里改了，打开着的魔镜也会跟着换。',
     lookCard: '外观', skinClassic: '经典（和桌面版一样）', skinGlass: '液态玻璃',
     skinHint: '镜框、标签和气泡的样子；液态玻璃跟着系统的浅色 / 深色。打开着的魔镜马上跟着换。标签上的“–”能把魔镜收起成气泡，拖到页面左右边缘会自动吸附，点一下弹回来。',
@@ -53,6 +55,7 @@ const TEXT = {
       '拖动镜子上方的深色标签移动；拖蓝色边框调整大小。',
       '点标签上的语言按钮（如“自动→中”）换翻译方向；按住 <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>O</kbd> 看原文。',
       '镜子里的链接、按钮、输入框照常能点，点到的是下面的真网页。',
+      '在输入框里连按三次空格，把框里的字翻译成“输入框翻译成”的语言（Ctrl+Z 撤回）。',
       'Chrome 自带的 PDF 阅读器、chrome:// 页面、应用商店页面里放不进魔镜。',
     ],
   },
@@ -64,6 +67,8 @@ const TEXT = {
     langCard: 'Languages', native: 'Your language',
     nativeHint: 'The interface follows your language (Chinese or English), and translations go into it by default.',
     source: 'Original', target: 'Translate into',
+    inputTarget: 'Translate input boxes into',
+    inputHint: 'Press Space three times in a text box on a page to translate what you typed into this language and replace it (Ctrl+Z undoes it). Works on pages where you have opened the mirror, even after you close it.',
     dirHint: 'With a specific original language, only text in that language is translated (for example, English menus on a Japanese page stay as they are). The language button on the mirror\'s tab switches directions any time and re-translates right away; changes here apply to open mirrors too.',
     lookCard: 'Appearance', skinClassic: 'Classic (like the desktop app)', skinGlass: 'Liquid Glass',
     skinHint: 'How the frame, tab and bubble look; Liquid Glass follows the system light or dark mode. Open mirrors switch right away. The "–" on the tab collapses the mirror into a bubble that snaps to the left or right edge; click it to bring the mirror back.',
@@ -108,6 +113,7 @@ const TEXT = {
       'Drag the dark tab above the mirror to move it; drag the blue border to resize it.',
       'Click the language button on the tab (e.g. "Auto→EN") to switch directions; hold <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>O</kbd> to peek at the original.',
       'Links, buttons and input boxes inside the mirror still work; clicks go to the real page underneath.',
+      'Press Space three times in a text box to translate it into the "Translate input boxes into" language (Ctrl+Z undoes it).',
       'The mirror can\'t open in Chrome\'s built-in PDF viewer, chrome:// pages or the Web Store.',
     ],
   },
@@ -160,6 +166,7 @@ function render() {
   const natives = Object.keys(T.NATIVE_NAMES).map((k) => [k, T.NATIVE_NAMES[k]]);
   fill($('native'), natives, $('native').value || saved.native);
   fill($('target'), natives, $('target').value || saved.target);
+  fill($('inputTarget'), natives, $('inputTarget').value || saved.inputTarget || (saved.native === 'en' ? 'zh-Hans' : 'en'));
   fill($('source'), Object.keys(T.SOURCES).map((k) => [k, T.ui(lang, 'src_' + k)]), $('source').value || saved.source || 'auto');
   if (dirty) $('unsaved').textContent = t('unsaved');
   drawChain();
@@ -485,6 +492,7 @@ $('native').addEventListener('change', async () => {
 for (const id of ['source', 'target']) {
   $(id).addEventListener('change', () => saveSettings({ source: $('source').value, target: $('target').value }));
 }
+$('inputTarget').addEventListener('change', () => saveSettings({ inputTarget: $('inputTarget').value }));
 
 // ------------------------------------------------------------------ 拉取模型
 let fetching = 0;
