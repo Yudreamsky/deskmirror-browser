@@ -1,5 +1,5 @@
 // 商店素材，放在 store/images：
-//   1-mirror-zh.png、2-mirror-en.png   截图 1280×800：演示页上打开魔镜（本机 Ollama gemma4:12b 真翻译）
+//   1-mirror-zh.png、2-mirror-en.png、5-glass-zh.png  截图 1280×800：演示页上打开魔镜（本机 Ollama gemma4:12b 真翻译；5 是液态玻璃皮肤）
 //   3-settings-zh.png、4-settings-en.png 截图 1280×800：上架版的设置页（备用阵列；先 node tools/pack.mjs）
 //   promo-440x280-zh.png、promo-440x280-en.png  小宣传图
 // node tools/store-assets.mjs [mirror|settings|promo]（不写就全部）
@@ -12,6 +12,7 @@ import { launchWithExtension } from '../tests/lib/ext.mjs';
 const OUT = path.join(ROOT, 'store/images');
 fs.mkdirSync(OUT, { recursive: true });
 const what = process.argv[2] || 'all';
+const only = process.argv[3] || '';     // 只重拍某一张截图：node tools/store-assets.mjs mirror 5
 const version = JSON.parse(fs.readFileSync(path.join(ROOT, 'extension/manifest.json'), 'utf8')).version;
 
 async function exact(send, width, height) {
@@ -22,11 +23,13 @@ async function exact(send, width, height) {
 async function mirrorShots(server) {
   const browser = await launch({ width: 1280, height: 800 });
   try {
-    for (const [file, page, native] of [['1-mirror-zh.png', 'demo-en.html', 'zh-Hans'], ['2-mirror-en.png', 'demo-zh.html', 'en']]) {
+    for (const [file, page, native, skin, rect] of [['1-mirror-zh.png', 'demo-en.html', 'zh-Hans', 'classic'], ['2-mirror-en.png', 'demo-zh.html', 'en', 'classic'],
+      ['5-glass-zh.png', 'demo-en.html', 'zh-Hans', 'glass']]) {
+      if (only && !file.startsWith(only)) continue;
       const p = await openPage(browser, { translate: ollamaTranslator('gemma4:12b'), verbose: false });
       await exact(p.send, 1280, 800);
       await p.goto(server.url(page), 800);
-      await p.eval(`(() => { __dm.start({ rect: { x: 334, y: 86, w: 880, h: 620 }, native: '${native}', target: '${native}',
+      await p.eval(`(() => { __dm.start({ rect: ${JSON.stringify(rect || { x: 334, y: 86, w: 880, h: 620 })}, native: '${native}', target: '${native}', skin: '${skin}',
         concurrency: 1 }); return 1; })()`);
       const done = await p.settle(300000);
       await sleep(1000);
