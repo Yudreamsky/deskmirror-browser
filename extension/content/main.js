@@ -184,13 +184,22 @@
     }
     copy.on('change', () => { s.clipDirty = true; });
 
+    // 非零环绕规则：镜框顺时针 +1；洞逆时针 −1，露出真网页（洞已合并成互不重叠的）；
+    // 已经排进译文、又压在画布上的块（Comfy 的节点、图表的图例）再顺时针 +1，从洞里重新露出复制品，但避开输入框这类洞
+    const ring = (h, cw) => (cw
+      ? `M${fmt(h.x)} ${fmt(h.y)}H${fmt(h.x + h.w)}V${fmt(h.y + h.h)}H${fmt(h.x)}Z`
+      : `M${fmt(h.x)} ${fmt(h.y)}V${fmt(h.y + h.h)}H${fmt(h.x + h.w)}V${fmt(h.y)}Z`);
     const updateClip = () => {
       const r = frame.rect;
-      let d = `M${r.x} ${r.y}H${r.x + r.w}V${r.y + r.h}H${r.x}Z`;
-      for (const h of copy.holeRects(r)) {
-        d += `M${fmt(h.x)} ${fmt(h.y)}H${fmt(h.x + h.w)}V${fmt(h.y + h.h)}H${fmt(h.x)}Z`;
+      const { holes, under, face } = copy.holeInfo(r);
+      let d = ring(r, true);
+      for (const h of holes) d += ring(h, false);
+      if (under.length) {
+        for (const c of s.units.coverRects(r, under)) {
+          for (const p of DM.subtractRects(c, face)) d += ring(p, true);
+        }
       }
-      const v = `path(evenodd, "${d}")`;
+      const v = `path(nonzero, "${d}")`;
       if (v !== s.clip) {
         copy.clip.style.clipPath = v;
         s.clip = v;

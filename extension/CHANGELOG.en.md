@@ -1,5 +1,8 @@
 # DeskMirror for browsers · Changes
 
+## 0.4.1 (2026-10-08)
+- Fixed: on pages where text sits on top of a canvas (such as the nodes and Markdown notes in Comfy Cloud, or chart legends), the mirror showed no translation. That text is now translated; the canvas itself and input boxes still show the real page.
+
 ## 0.4.0 (2026-10-07)
 - Backup services: line up several translation services (for example Ollama Cloud → Ollama on this PC → DeepSeek). When one fails (out of credit, wrong key, model retired, unreachable, too slow), the next takes over without redoing finished text; a failed service is skipped for a while and retried later, and Save starts again from the main one.
 - While a backup is in use, the mirror's tab shows "backup ② model" and its tooltip says why the main service failed; Settings lists which services are skipped and why, and "Test all" checks every one.

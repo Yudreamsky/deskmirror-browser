@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Canvas with DOM nodes (Comfy-like)</title>
+<!-- 测试页：照 Comfy Cloud（节点 2.0）的结构：整屏的画布当底（网格、连线），上面一层平移缩放的容器里放着网页元素做的节点；
+     Markdown 说明节点（内容在可以滚动的框里）、带输入框和下拉框的参数节点、提示词文本框、节点里的小画布（3D 预览）、直接画在画布上的透明底标签 -->
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #202020; color: #ddd; font: 12px/1.45 system-ui, "Segoe UI", sans-serif; }
+  .top { position: absolute; left: 0; right: 0; top: 0; height: 40px; background: #171717; display: flex; align-items: center; gap: 18px;
+    padding: 0 16px; z-index: 5; font-size: 13px; }
+  .top b { color: #fff; }
+  .wrap { position: absolute; left: 0; right: 0; top: 40px; bottom: 0; overflow: hidden; }
+  #graph { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .layer { position: absolute; inset: 0; pointer-events: none; transform-origin: 0 0; will-change: transform; }
+  .node { position: absolute; width: 330px; pointer-events: auto; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,.5); }
+  .head { background: #222; color: #eee; font-weight: 600; padding: 7px 10px; font-size: 13px; }
+  .body { background: #000; padding: 8px 10px 10px; }
+  .md { height: 140px; overflow-y: auto; padding-right: 6px; }
+  .md h3 { margin: 4px 0 6px; font-size: 14px; color: #fff; }
+  .md p { margin: 0 0 8px; }
+  .md ul { margin: 0 0 8px; padding-left: 18px; }
+  .row { display: grid; grid-template-columns: 70px 1fr; align-items: center; gap: 8px; margin: 5px 0; }
+  .row input, .row select { background: #1b1b1b; color: #eee; border: 1px solid #444; border-radius: 6px; padding: 3px 6px; font: inherit; width: 100%; }
+  textarea { width: 100%; height: 70px; background: #141414; color: #ddd; border: 1px solid #444; border-radius: 6px; font: inherit; resize: none; }
+  .preview { position: relative; height: 150px; }
+  .preview canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .label { position: absolute; color: #9fb4c8; font-size: 15px; font-weight: 600; pointer-events: none; }
+</style>
+</head>
+<body>
+<div class="top"><b>ComfyLike</b><span>Workflow</span><span>Edit</span><span>Help</span></div>
+<div class="wrap">
+  <canvas id="graph"></canvas>
+  <div class="layer" id="layer" style="transform: matrix(1.1, 0, 0, 1.1, 40, 30)">
+    <div class="label" style="transform: translate(30px, 2px)">Character setup group</div>
+    <div class="node" id="note" style="transform: translate(30px, 40px)">
+      <div class="head">Markdown Note</div>
+      <div class="body"><div class="md">
+        <h3>How to use this template</h3>
+        <p>This workflow uses a turnaround sheet as input. You can create one with the character sheet template first, then load it here.</p>
+        <ul><li>Set the image size before you run the workflow.</li><li>Lower the steps if your GPU runs out of memory.</li></ul>
+        <p>The last group saves every view into the output folder, so you can compare them side by side.</p>
+        <p>If the colors look washed out, raise the guidance a little and run it again.</p>
+      </div></div>
+    </div>
+    <div class="node" id="sampler" style="transform: translate(400px, 40px); width: 260px">
+      <div class="head">Sampler settings</div>
+      <div class="body">
+        <div class="row"><span>Steps</span><input type="number" value="30"></div>
+        <div class="row"><span>Guidance</span><input type="number" value="4.5"></div>
+        <div class="row"><span>Scheduler</span><select><option>normal</option><option>karras</option></select></div>
+        <p style="margin:8px 0 0">Higher steps give finer detail but take longer.</p>
+      </div>
+    </div>
+    <div class="node" id="prompt" style="transform: translate(400px, 230px); width: 260px">
+      <div class="head">Positive prompt</div>
+      <div class="body"><textarea>a knight in silver armor, front view, side view, back view</textarea></div>
+    </div>
+    <div class="node" id="view" style="transform: translate(30px, 260px)">
+      <div class="head">3D preview</div>
+      <div class="body"><div class="preview"><canvas id="three" width="310" height="150"></canvas></div>
+        <p style="margin:8px 0 0">Drag inside the preview to rotate the model.</p></div>
+    </div>
+  </div>
+</div>
+<script>
+  // 画布：网格点和几条连线（Comfy 的画布在节点下面画这些）
+  const g = document.getElementById('graph');
+  const draw = () => {
+    const r = g.getBoundingClientRect();
+    g.width = r.width; g.height = r.height;
+    const c = g.getContext('2d');
+    c.fillStyle = '#202020'; c.fillRect(0, 0, g.width, g.height);
+    c.fillStyle = '#3a3a3a';
+    for (let x = 10; x < g.width; x += 20) for (let y = 10; y < g.height; y += 20) c.fillRect(x, y, 2, 2);
+    c.strokeStyle = '#7aa6d8'; c.lineWidth = 3;
+    c.beginPath(); c.moveTo(440, 150); c.bezierCurveTo(470, 150, 450, 330, 480, 330); c.stroke();
+    c.beginPath(); c.moveTo(200, 230); c.bezierCurveTo(260, 260, 340, 250, 470, 120); c.stroke();
+  };
+  draw();
+  // 节点里的小画布（3D 预览）
+  const t = document.getElementById('three').getContext('2d');
+  const grd = t.createLinearGradient(0, 0, 310, 150); grd.addColorStop(0, '#2d4b73'); grd.addColorStop(1, '#6c3b5e');
+  t.fillStyle = grd; t.fillRect(0, 0, 310, 150);
+  t.fillStyle = '#e8d3a0'; t.beginPath(); t.arc(155, 75, 45, 0, Math.PI * 2); t.fill();
+</script>
+</body>
+</html>

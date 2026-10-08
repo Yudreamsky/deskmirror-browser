@@ -402,6 +402,60 @@
       }
     }
 
+    /**
+     * 已经排进译文、又压在画布上的块（视口坐标，裁到镜框和外层的滚动框里）。镜框在画布那里挖了洞，
+     * 这些块要从洞里重新露出复制品里的译文。leaf 用所在的块（译文换行后可能比原文宽）。
+     */
+    coverRects(frame, under) {
+      const out = [];
+      const boxes = new Map();
+      const box = (el) => {
+        let r = boxes.get(el);
+        if (!r) {
+          const b = el.getBoundingClientRect();
+          r = { x: b.left, y: b.top, w: b.width, h: b.height };
+          boxes.set(el, r);
+        }
+        return r;
+      };
+      const cut = (a, b) => {
+        const x = Math.max(a.x, b.x), y = Math.max(a.y, b.y);
+        const w = Math.min(a.x + a.w, b.x + b.w) - x, h = Math.min(a.y + a.h, b.y + b.h) - y;
+        return w >= 1 && h >= 1 ? { x, y, w, h } : null;
+      };
+      for (const u of this.byNode.values()) {
+        if (!u.rendered) continue;
+        const el = u.kind === 'leaf' ? u.container : u.node;
+        if (!el || !el.isConnected) continue;
+        let r = cut(box(el), frame);
+        if (!r || !under.some((h) => cut(r, h))) continue;
+        for (const c of this._clipsOf(el)) {
+          r = cut(r, box(c));
+          if (!r) break;
+        }
+        if (r) out.push(r);
+      }
+      return out;
+    }
+
+    /** el 外层会裁掉内容的元素（overflow 不是 visible 的滚动框等），记住不再重算。 */
+    _clipsOf(el) {
+      if (!this._clipMemo) this._clipMemo = new WeakMap();
+      const memo = this._clipMemo;
+      const up = (e) => {
+        if (!e || e === document.documentElement || e === document.body) return [];
+        let v = memo.get(e);
+        if (v) return v;
+        const parent = e.parentElement || (e.parentNode && e.parentNode.host) || null;
+        const cs = getComputedStyle(e);
+        const clips = cs.overflowX !== 'visible' || cs.overflowY !== 'visible' || /paint|strict|content/.test(cs.contain);
+        v = clips ? [e].concat(up(parent)) : up(parent);
+        memo.set(e, v);
+        return v;
+      };
+      return up(el.parentElement || (el.parentNode && el.parentNode.host) || null);
+    }
+
     _status() {
       if (this.opts.onStatus) {
         this.opts.onStatus({ pending: this.waiting.size, inflight: this.inflight, error: this.error, paused: this.paused });

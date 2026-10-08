@@ -62,6 +62,9 @@ node tests\extension.mjs ollama
 :: 备用阵列：用本机的假服务（402、410、不回话、译到一半断开、连不上）走一遍后台、镜框标签、设置页
 node tests\chain.mjs
 
+:: 画布当底、上面压着网页元素做的节点（Comfy Cloud 的结构）：压在画布上的译文要露出来，输入框和画布照旧是真网页
+node tests\canvas.mjs
+
 :: 镜框标签：正在用备用时加宽到放得下
 node tests\tabwidth.mjs
 

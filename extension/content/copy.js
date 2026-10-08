@@ -9,6 +9,9 @@
 
   const HTML_NS = 'http://www.w3.org/1999/xhtml';
   const HOLE_SEL = 'video,canvas,iframe,frame,embed,object,audio[controls],input:not([type="hidden"]),textarea,select';
+  // 画布在复制品里是空的，要挖洞露出真网页；但画布常常是“底”，上面还压着网页文字（Comfy 的节点、图表的图例），
+  // 这些文字的译文要从洞里重新露出来（见 main.js 的 updateClip）。其他的洞（输入框、iframe、视频）照旧整块露出真网页。
+  const UNDER = new Set(['canvas']);
   // 这些属性一复制就会去加载东西或运行东西，复制品里不要
   const DROP_ATTR = {
     iframe: ['src', 'srcdoc'], frame: ['src'], embed: ['src'], object: ['data'],
@@ -1061,21 +1064,32 @@
       this._holesDirty = false;
     }
 
-    /** 开口范围内要露出真网页的矩形（视口坐标）。 */
-    holeRects(frame) {
+    /**
+     * 开口范围内要露出真网页的矩形（视口坐标）：holes 是合并好、互不重叠的洞；
+     * under 是其中画布的范围（上面压着的译文要重新露出来），face 是输入框这类必须一直露出真网页的洞。
+     */
+    holeInfo(frame) {
       if (this._holesDirty) this.refreshHoles();
-      const out = [];
-      const add = (r) => {
+      const all = [], under = [], face = [];
+      const add = (r, list) => {
         if (r.width < 1 || r.height < 1) return;
         const x0 = Math.max(r.left, frame.x), y0 = Math.max(r.top, frame.y);
         const x1 = Math.min(r.right, frame.x + frame.w), y1 = Math.min(r.bottom, frame.y + frame.h);
-        if (x1 > x0 && y1 > y0) out.push({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 });
+        if (x1 > x0 && y1 > y0) {
+          const h = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+          all.push(h);
+          list.push(h);
+        }
       };
-      for (const el of this.holeEls) add(el.getBoundingClientRect());
+      for (const el of this.holeEls) add(el.getBoundingClientRect(), UNDER.has(el.localName) ? under : face);
       let a = document.activeElement;
       while (a && a.shadowRoot && a.shadowRoot.activeElement) a = a.shadowRoot.activeElement;
-      if (a && a.isContentEditable) add(a.getBoundingClientRect());
-      return mergeRects(out);
+      if (a && a.isContentEditable) add(a.getBoundingClientRect(), face);
+      return { holes: mergeRects(all), under, face };
+    }
+
+    holeRects(frame) {
+      return this.holeInfo(frame).holes;
     }
   }
 
@@ -1100,6 +1114,29 @@
     return out;
   }
 
+  /** 矩形 a 减去一组矩形，剩下的切成互不重叠的小矩形。 */
+  function subtractRects(a, cuts) {
+    let parts = [a];
+    for (const b of cuts) {
+      const next = [];
+      for (const p of parts) {
+        if (!(p.x < b.x + b.w && b.x < p.x + p.w && p.y < b.y + b.h && b.y < p.y + p.h)) {
+          next.push(p);
+          continue;
+        }
+        const px1 = p.x + p.w, py1 = p.y + p.h, bx1 = b.x + b.w, by1 = b.y + b.h;
+        if (b.y > p.y) next.push({ x: p.x, y: p.y, w: p.w, h: b.y - p.y });
+        if (by1 < py1) next.push({ x: p.x, y: by1, w: p.w, h: py1 - by1 });
+        const y0 = Math.max(p.y, b.y), y1 = Math.min(py1, by1);
+        if (b.x > p.x) next.push({ x: p.x, y: y0, w: b.x - p.x, h: y1 - y0 });
+        if (bx1 < px1) next.push({ x: bx1, y: y0, w: px1 - bx1, h: y1 - y0 });
+      }
+      parts = next;
+    }
+    return parts;
+  }
+
   DM.LiveCopy = LiveCopy;
   DM.mergeRects = mergeRects;
+  DM.subtractRects = subtractRects;
 })();
