@@ -1,5 +1,8 @@
 # DeskMirror for browsers · Changes
 
+## 0.5.3 (2026-10-08)
+- The Liquid Glass language menu is much less transparent (light and dark), so what is behind it no longer gets in the way of reading.
+
 ## 0.5.2 (2026-10-08)
 - While collapsed, hovering over the bubble also shows the tokens sent and received since the mirror opened.
 

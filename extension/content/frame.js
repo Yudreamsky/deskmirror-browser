@@ -91,8 +91,8 @@
 :host([data-skin="glass"]) .tab { border-radius: ${TAB_H / 2}px; padding: 0 4px 0 12px; gap: 7px;
   -webkit-backdrop-filter: url(#dm-lg-tab) blur(1px) saturate(150%); backdrop-filter: url(#dm-lg-tab) blur(1px) saturate(150%); }
 :host([data-skin="glass"]) .menu { border-radius: 16px; padding: 8px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(246, 247, 250, 0.56));
-  -webkit-backdrop-filter: url(#dm-lg-menu) blur(4px) saturate(150%); backdrop-filter: url(#dm-lg-menu) blur(4px) saturate(150%); }
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(248, 249, 251, 0.9));
+  -webkit-backdrop-filter: url(#dm-lg-menu) blur(16px) saturate(150%); backdrop-filter: url(#dm-lg-menu) blur(16px) saturate(150%); }
 :host([data-skin="glass"]) .btn { color: #1d1d1f; background: rgba(255, 255, 255, 0.6); border-radius: 10px;
   box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9); }
 :host([data-skin="glass"]) .btn:hover { background: rgba(255, 255, 255, 0.92); }
@@ -136,7 +136,7 @@
   :host([data-skin="glass"]) .traffic .down { color: #8cc8ff; }
   :host([data-skin="glass"]) .menu .head, :host([data-skin="glass"]) .menu .arrow { color: #98989d; }
   :host([data-skin="glass"]) .menu .item:hover { background: rgba(255, 255, 255, 0.1); }
-  :host([data-skin="glass"]) .menu { background: linear-gradient(180deg, rgba(72, 72, 78, 0.7), rgba(28, 28, 32, 0.6)); }
+  :host([data-skin="glass"]) .menu { background: linear-gradient(180deg, rgba(56, 56, 62, 0.94), rgba(30, 30, 34, 0.92)); }
   :host([data-skin="glass"]) .bubble { color: #fff; border-color: rgba(255, 255, 255, 0.25); text-shadow: 0 0 6px rgba(0, 0, 0, 0.8);
     background: radial-gradient(120% 120% at 30% 18%, rgba(120, 160, 230, 0.55), rgba(40, 60, 100, 0.3) 60%, rgba(20, 24, 34, 0.26));
     box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.35), inset 0 -3px 8px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.45); }
