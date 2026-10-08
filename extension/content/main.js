@@ -152,8 +152,29 @@
         if (cfg.onLang) cfg.onLang(source, target);
         else saveLanguages(source, target);
       },
+      // 收起成气泡：译文那一层淡出，停止翻译；弹出来再淡入、接着翻
+      onFold: (folded) => {
+        s.folded = folded;
+        const clip = copy.clip;
+        if (folded) {
+          const a = clip.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, easing: 'ease-out', fill: 'forwards' });
+          a.finished.then(() => {
+            if (s.folded) clip.classList.add('fold');
+            a.cancel();
+          }).catch(() => {});
+          s.units.setHidden(true);
+        } else {
+          clip.classList.remove('fold');
+          s.clipDirty = true;
+          clip.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 240, easing: 'ease-out' });
+          s.units.setHidden(false);
+        }
+      },
+      onBubble: (pos) => saveBubble(pos),
     });
     s.frame = frame;
+    frame.setSkin(cfg.skin);
+    loadBubble(frame);
     frame.setLang(cfg.source || 'auto', cfg.target);
 
     const backend = cfg.backend || DM.makeBackend(cfg);
@@ -210,10 +231,15 @@
     const ring = (h, cw) => (cw
       ? `M${fmt(h.x)} ${fmt(h.y)}H${fmt(h.x + h.w)}V${fmt(h.y + h.h)}H${fmt(h.x)}Z`
       : `M${fmt(h.x)} ${fmt(h.y)}V${fmt(h.y + h.h)}H${fmt(h.x + h.w)}V${fmt(h.y)}Z`);
+    // 圆角矩形（顺时针），液态玻璃皮肤的开口
+    const roundRing = (h, k) => `M${h.x + k} ${h.y}H${h.x + h.w - k}A${k} ${k} 0 0 1 ${h.x + h.w} ${h.y + k}`
+      + `V${h.y + h.h - k}A${k} ${k} 0 0 1 ${h.x + h.w - k} ${h.y + h.h}H${h.x + k}A${k} ${k} 0 0 1 ${h.x} ${h.y + h.h - k}`
+      + `V${h.y + k}A${k} ${k} 0 0 1 ${h.x + k} ${h.y}Z`;
     const updateClip = () => {
+      if (s.folded) return;
       const r = frame.rect;
       const { holes, under, face } = copy.holeInfo(r);
-      let d = ring(r, true);
+      let d = frame.radius ? roundRing(r, Math.min(frame.radius, r.w / 2, r.h / 2)) : ring(r, true);
       for (const h of holes) d += ring(h, false);
       if (under.length) {
         for (const c of s.units.coverRects(r, under)) {
@@ -284,6 +310,19 @@
     }).catch(() => {});
   }
 
+  const extStorage = () => !!(globalThis.chrome && chrome.storage && chrome.runtime && chrome.runtime.id);
+
+  function saveBubble(pos) {
+    if (extStorage()) chrome.storage.local.set({ bubble: pos }).catch(() => {});
+  }
+
+  function loadBubble(frame) {
+    if (!extStorage()) return;
+    chrome.storage.local.get('bubble').then(({ bubble }) => {
+      if (bubble && !frame.home) frame.home = bubble;
+    }).catch(() => {});
+  }
+
   /** 设置页里改了语言方向，打开着的魔镜马上跟着换。 */
   DM.applySettings = function (st) {
     const s = DM.session;
@@ -301,6 +340,10 @@
     if (source !== s.units.opts.source || target !== s.units.opts.target) {
       s.frame.setLang(source, target);
       s.units.setLanguages(source, target);
+    }
+    if ((st.skin || 'classic') !== s.frame.skin) {
+      s.frame.setSkin(st.skin);
+      s.clipDirty = true;
     }
   };
 

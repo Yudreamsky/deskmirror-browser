@@ -99,6 +99,12 @@
       this._status();
     }
 
+    /** 收起成气泡时：镜框看不见，先不翻译；弹出来接着翻。 */
+    setHidden(on) {
+      this.hidden = on;
+      if (!on) this.pumpSoon(0);
+    }
+
     // ---------------------------------------------------------------- 找翻译单位
     scan(root) {
       if (!root) return;
@@ -288,7 +294,7 @@
     }
 
     pump() {
-      if (this.paused) return;
+      if (this.paused || this.hidden) return;
       const f = this.opts.frameRect();
       const vw = innerWidth, vh = innerHeight;
       const cand = [];
@@ -334,7 +340,7 @@
 
     _dispatch() {
       const max = this.opts.concurrency || 2;
-      while (!this.paused && this.inflight < max && this.queue.length) {
+      while (!this.paused && !this.hidden && this.inflight < max && this.queue.length) {
         const keys = [];
         let chars = 0;
         while (this.queue.length && keys.length < BATCH_SEGMENTS && chars < BATCH_CHARS) {

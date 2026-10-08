@@ -17,6 +17,8 @@ const TEXT = {
     nativeHint: '界面语言跟着母语（中文母语用中文界面，其他用英文界面），译文默认译成母语。',
     source: '原文', target: '译成',
     dirHint: '指定原文后只翻这种文字（比如日文网页上的英文菜单就不翻）。镜框标签上的语言按钮也能随时切换，选了马上按新方向重翻；这里改了，打开着的魔镜也会跟着换。',
+    lookCard: '外观', skinClassic: '经典（和桌面版一样）', skinGlass: '液态玻璃',
+    skinHint: '镜框、标签和气泡的样子；液态玻璃跟着系统的浅色 / 深色。打开着的魔镜马上跟着换。标签上的“–”能把魔镜收起成气泡，拖到页面左右边缘会自动吸附，点一下弹回来。',
     service: '翻译服务', svcLabel: '服务',
     chainHint: '可以排好几个服务：按顺序用，前一个出错（额度用完、Key 不对、模型下线、连不上、太慢）就自动换下一个，已经译好的不重翻；出错的过一会儿再回头试。',
     primary: '主力', backup: '备用', add: '＋ 添加备用', testAll: '测试全部', editing: '下面改的是 {n} {r}',
@@ -63,6 +65,8 @@ const TEXT = {
     nativeHint: 'The interface follows your language (Chinese or English), and translations go into it by default.',
     source: 'Original', target: 'Translate into',
     dirHint: 'With a specific original language, only text in that language is translated (for example, English menus on a Japanese page stay as they are). The language button on the mirror\'s tab switches directions any time and re-translates right away; changes here apply to open mirrors too.',
+    lookCard: 'Appearance', skinClassic: 'Classic (like the desktop app)', skinGlass: 'Liquid Glass',
+    skinHint: 'How the frame, tab and bubble look; Liquid Glass follows the system light or dark mode. Open mirrors switch right away. The "–" on the tab collapses the mirror into a bubble that snaps to the left or right edge; click it to bring the mirror back.',
     service: 'Translation service', svcLabel: 'Service',
     chainHint: 'You can line up several services. They are used in order: when one fails (out of credit, wrong key, model retired, unreachable, too slow), the next one takes over without redoing finished text, and the failed one is retried after a while.',
     primary: 'Main', backup: 'Backup', add: '+ Add a backup', testAll: 'Test all', editing: 'Editing {n} {r}',
@@ -455,6 +459,18 @@ for (const id of ['baseUrl', 'model', 'apiKey']) $(id).addEventListener('input',
 // “x 分钟后再试”跟着走
 setInterval(() => { if (Object.keys(health).length) drawChain(); }, 30000);
 
+// ------------------------------------------------------------------ 外观（皮肤）
+function showSkin(v) {
+  for (const b of document.querySelectorAll('.skin')) b.classList.toggle('on', b.dataset.skin === (v || 'classic'));
+}
+
+for (const b of document.querySelectorAll('.skin')) {
+  b.addEventListener('click', () => {
+    showSkin(b.dataset.skin);
+    saveSettings({ skin: b.dataset.skin });
+  });
+}
+
 // ------------------------------------------------------------------ 语言
 $('native').addEventListener('change', async () => {
   const before = saved.native;
@@ -762,6 +778,7 @@ async function load() {
   $('target').value = saved.target;
   $('source').value = saved.source || 'auto';
   push();
+  showSkin(saved.skin);
   loadHealth();
   banner();
   if (installType === 'development') checkUpdate();

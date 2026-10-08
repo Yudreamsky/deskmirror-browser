@@ -1,5 +1,9 @@
 # DeskMirror for browsers · Changes
 
+## 0.5.0 (2026-10-08)
+- Collapse into a bubble: click "–" on the tab and the frame smoothly shrinks into a round bubble at the edge of the page. Drag it to the left or right and it snaps to that edge; after a moment it tucks halfway in and slides out when you point at it. Click the bubble and the mirror smoothly returns to where it was. Translation pauses while collapsed.
+- Skins: Classic (like the desktop app) or Liquid Glass (frosted, rounded, with highlights; follows the system light or dark mode). Pick one under Appearance in Settings; open mirrors switch right away.
+
 ## 0.4.2 (2026-10-08)
 - The mirror's top bar shows the tokens sent (↑) and received (↓) since the mirror opened, like a network monitor; hover for exact numbers. When a service does not report usage, it is estimated from the text length and marked with "≈".
 

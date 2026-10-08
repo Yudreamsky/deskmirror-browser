@@ -108,6 +108,16 @@ async function main() {
     const opt = await b.cdp.send('Target.createTarget', { url: `chrome-extension://${extId}/options.html` });
     const op = await b.attach(opt.targetId);
     await sleep(1500);
+    // 外观：设置页里点“液态玻璃”，打开着的魔镜马上换皮肤；再点“经典”换回来
+    const pickSkin = (v) => op.eval(`(async () => { document.querySelector('.skin[data-skin="${v}"]').click(); await new Promise((r) => setTimeout(r, 700));
+      return { on: document.querySelector('.skin.on').dataset.skin, saved: (await chrome.storage.local.get('settings')).settings.skin }; })()`);
+    const g = await pickSkin('glass');
+    const liveGlass = await page.eval(`document.querySelector('[data-deskmirror]').getAttribute('data-skin')`);
+    await page.shot(path.join(OUT, 'options-skin-glass.png'));
+    const c = await pickSkin('classic');
+    const liveClassic = await page.eval(`document.querySelector('[data-deskmirror]').getAttribute('data-skin')`);
+    check(g.on === 'glass' && g.saved === 'glass' && liveGlass === 'glass' && c.saved === 'classic' && liveClassic === 'classic',
+      `外观：点“液态玻璃”，设置记下 ${g.saved}，打开着的魔镜马上换成 ${liveGlass}；点“经典”换回 ${liveClassic}`);
     const up = await op.eval(`({ msg: document.getElementById('updateMsg').textContent,
       btn: document.getElementById('upgrade').hidden ? '' : document.getElementById('upgrade').textContent,
       notes: document.getElementById('updateNotes').children.length, ver: document.getElementById('version').textContent })`);
