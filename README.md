@@ -1,108 +1,61 @@
-# 桌面魔镜 · 浏览器版（原型）
+English | [简体中文](README.zh-CN.md)
 
-在网页上放一块可以拖动的“镜子”：镜框里是同一位置的译文，排版、字体、颜色、链接样式和原网页一样；镜框外照常是原网页。
+# DeskMirror for browsers
 
-做法就是“两张叠在一起的纸”：扩展把当前网页实时复制一份放在上层，把复制品里的文字换成译文，每一段的大小锁成和原文一样，
-所以两张纸始终逐段对齐；上层只露出镜框那一块，鼠标点击穿过去落到下面的真网页上，镜子里的链接、按钮、输入框照常能用。
+Translate web pages in place. A "mirror" frame sits on the page, and you can drag it and resize it. Inside the frame, the same spot of the page appears translated, keeping the page's own layout, fonts, colors, images and links. Outside the frame, the page stays as it is, so you can always tell which sentence is which.
 
-## 安装（开发者模式）
+This is the browser companion of [DeskMirror](https://github.com/Yudreamsky/deskmirror), the Windows app that translates anything on your screen (apps, games, video subtitles).
 
-1. Chrome 地址栏输入 `chrome://extensions`，打开右上角的“开发者模式”。
-2. 点“加载已解压的扩展程序”，选这个文件夹里的 `extension`。
-3. 第一次装好会打开设置页：
-   - 默认用本机 Ollama 的 `gemma4:12b`（和桌面版一样，不用 Key，文字不出本机）。
-   - 用 DeepSeek：选“DeepSeek”，填自己的 API Key，点“测试连接”再“保存”。
-4. 打开任意网页，点工具栏上的“镜”图标（在拼图图标里可以把它固定出来），或按 `Alt+Shift+M`；再按一次关掉。
-
-用法：拖镜子上方的深色标签移动，拖蓝色边框调整大小；按住 `Ctrl+Alt+O` 看原文；标签上的“暂停”暂时停用。
-
-## 备用阵列
-
-设置页的“翻译服务”可以排好几个，第一个是主力，比如：Ollama 云端模型 → 本机 Ollama → DeepSeek。
-
-- 前一个出错就自动换下一个：额度用完 / 订阅到期（402）、Key 不对（401/403）、模型下线（410）、连不上、限流、
-  太慢（后面还有备用时，第一段译文等 30 秒，本机模型等 90 秒）。已经译好的段落不重翻，只把剩下的交给下一个。
-- 出错的先跳过：Key、额度、模型这类一时好不了的跳过 30 分钟；连不上、限流、太慢先跳过 1 分钟，接连出错就翻倍。
-  点“保存”会清空这些记录，重新从主力试起；“测试连接”成功的也马上恢复。
-- 用上备用时，镜框标签上显示“备用② 模型名”（琥珀色），鼠标停上去能看到主力为什么不能用；回到主力后就不显示了。
-
-## 目录
-
-| 路径 | 内容 |
+| English page → Chinese | Chinese page → English |
 |---|---|
-| `extension/content/copy.js` | 实时复制网页（节点对应、变化同步、滚动跟随、固定元素和局部滚动区域的补偿、悬停焦点、挖洞） |
-| `extension/content/units.js` | 找翻译单位、带行内标签的原文、排队翻译、把译文排进复制品、锁大小、放不下时缩字 |
-| `extension/content/frame.js` | 镜框界面（样子照桌面版） |
-| `extension/content/main.js` | 启动、关闭、接线 |
-| `extension/content/text.js` | 提示词、流式解析、行内标签、语言判断、测试用假翻译（内容脚本、后台、Node 测试共用） |
-| `extension/llm.js` | 请求 Ollama 原生接口 / OpenAI 兼容接口 |
-| `extension/chain.js` | 备用阵列：按顺序换下一个、只交出剩下的段落、限时、出错的跳过多久（后台和设置页共用） |
-| `extension/presets.js` | 翻译服务商预设、把设置整理成阵列、显示的名字 |
-| `extension/background.js` | 后台：注入、开关、替内容脚本请求翻译服务 |
-| `extension/options.*` | 设置页 |
-| `tests/` | 自测工具（独立的无头 Chrome，临时用户目录，用完删掉） |
+| ![](store/images/1-mirror-zh.png) | ![](store/images/2-mirror-en.png) |
 
-## 自测
+## Install
+
+- **Chrome Web Store**: under review.
+- **From source**: download this repository, open `chrome://extensions`, turn on *Developer mode*, click *Load unpacked* and choose the `extension` folder. Settings opens after installation.
+
+## Use
+
+- Click the toolbar icon or press `Alt+Shift+M` to open the mirror on the current page; press it again to close it.
+- Drag the dark tab to move the mirror; drag the blue border to resize it.
+- Links, buttons and input boxes inside the mirror still work: clicks go to the real page underneath.
+- Hold `Ctrl+Alt+O` to peek at the original; the language button on the tab switches the translation direction.
+- The tab shows the tokens sent (↑) and received (↓) since the mirror opened; hover over it to see exact numbers.
+
+## Translation services
+
+- **On your own computer**: Ollama or LM Studio. Free, and the text never leaves your PC.
+- **Cloud**: many providers are built into Settings (OpenAI, Gemini, Claude, DeepSeek, Qwen, GLM, Kimi, OpenRouter and more), plus any OpenAI-compatible API. Enter your own API key, then *Get models* lists the models you can use.
+- **Backup services**: line up several. When one runs out of credit, has a wrong key, retires a model, can't be reached or is too slow, the next takes over without redoing finished text, and the tab shows which backup is in use.
+
+## Privacy
+
+There is no account, no developer server and no analytics. Page text is sent only to the translation service you choose, and API keys stay in this browser on your computer. Full policy: [store/privacy-policy.md](store/privacy-policy.md).
+
+## How it works
+
+The extension keeps a live copy of the page in a sandboxed, same-origin iframe stacked exactly over the real page, like two sheets of paper. Text blocks in the copy are replaced by their translations, and each block's size is locked to the original, so the two sheets stay aligned. Only the frame's area of the copy is visible. Clicks go through to the real page. Scrolling is synchronized on the compositor with scroll-driven animations, so the copy doesn't lag behind while scrolling. Canvases, videos, iframes and input boxes show the real page through holes. Translated text that sits on top of a canvas is shown again over the hole, so node-based apps like Comfy Cloud work.
+
+## Development
+
+There is no build step and no npm dependency; the tests need Node 22+ and Chrome.
 
 ```bat
-:: 译文=原文：开口里应该和真网页像素一致；zh：假中文，检查每块位置；real：本机 Ollama 真翻译
-node tests\run.mjs identity article.html
-node tests\run.mjs zh article.html
-node tests\run.mjs real https://en.wikipedia.org/wiki/Glacier
-
-:: 滚动跟随：逐帧录屏，量镜内和镜外差了几像素（region=page 整页 / fixed 固定栏 / pane 局部滚动区域）
-node tests\lag.mjs gesture ruler-fixed.html --region=fixed
-
-:: 真实网站：复制走样多少、启动耗时、滚动帧间隔
-node tests\sites.mjs
-
-:: 装上扩展走一遍完整流程（mock 或 ollama）
-node tests\extension.mjs ollama
-
-:: 备用阵列：用本机的假服务（402、410、不回话、译到一半断开、连不上）走一遍后台、镜框标签、设置页
-node tests\chain.mjs
-
-:: 画布当底、上面压着网页元素做的节点（Comfy Cloud 的结构）：压在画布上的译文要露出来，输入框和画布照旧是真网页
-node tests\canvas.mjs
-
-:: 用量（顶部栏的 ↑ ↓）：服务报告的用量、不认 stream_options 的服务降一档按字数估、本机 Ollama 的计数、打开魔镜后的累计
-node tests\usage.mjs
-
-:: 镜框标签：正在用备用时加宽到放得下
-node tests\tabwidth.mjs
-
-:: 单元测试（解析、语言判断、备用阵列的规则）
 node --test tests\unit\*.test.mjs
-```
-
-## 打包上架
-
-```bat
-:: 打成上架用的 zip：dist\deskmirror-browser-<版本>.zip（旁边是解开的同名文件夹）。
-:: 去掉源码里 <store-strip> 标记之间的内容（编程订阅套餐、测试用假翻译），打好后自己解开核对一遍
+node tests\run.mjs identity article.html
+node tests\chain.mjs
+node tests\canvas.mjs
+node tests\usage.mjs
 node tools\pack.mjs
-
-:: 装上解开的上架包自测：设置页（假装从商店装的：不显示“检查更新”）、更新提示规则、真的打开魔镜翻译
-node tests\store.mjs
 ```
 
-从商店装的版本由 Chrome 自动更新：设置页不显示“检查更新”，只有前两位版本号变了（如 0.4 → 0.5）才在更新后打开“更新了什么”。
+`tools\pack.mjs` builds the store zip in `dist\`. See [README.zh-CN.md](README.zh-CN.md) for every test and the measurements.
 
-## 原型阶段的实测（2026-10-07，Chrome 154，无头）
+## Support
 
-- **对齐**：不改字时镜内和真网页像素一致（测试页 0%；维基百科、GitHub、MDN、Hacker News、BBC、YouTube 都在 0.1% 以内，
-  差异是个别字体回退）。换成中文后，测试页上每段位置偏差 ≤0.06 px，维基百科上 ≤2 px（个别按钮的基线）。
-- **滚动**：逐帧录屏测量，整页滚动、顶部固定栏在滚动中 0 像素偏差；页面里单独滚动的区域只有刚开始滚的 1–2 帧有偏差。
-  做法：复制品的位置 = 主线程同步的滚动量 + 合成器按真网页滚动量算的反向平移（滚动驱动动画），两者之差正好补上主线程晚的那一帧。
-- **速度**：复制维基百科一篇长文（约 1.2 万个节点）约 0.15 秒，YouTube 观看页（约 2 万个节点）约 0.3 秒；
-  普通网页开着魔镜滚动帧率不变，YouTube 这种重页面在测试机上从约 120 帧降到约 60 帧。
-- **真翻译**：本机 gemma4:12b，维基百科镜子附近 88 段约 30 秒；链接、粗体、斜体、上标引用都保留在原位。
+DeskMirror is free and open source. If it helps you, you can [buy me a coffee on Ko-fi](https://ko-fi.com/dreamskyu). The *Support the author* section at the bottom of Settings also has a WeChat code. Feedback: a885187@gmail.com or GitHub issues.
 
-## 已知限制
+## License
 
-- 只翻网页上的文字：图片里的字、画布上画的字、视频里烧进去的字幕不翻（以后可接“看图翻译”）。
-- Chrome 自带的 PDF 阅读器、`chrome://` 页面、应用商店页面里放不进去。
-- 页面里单独滚动的区域，子元素超过 40 个时不做补偿，滚动时会慢一帧。
-- 镜内的字用灰度抗锯齿（合成器图层），和镜外的 ClearType 彩色抗锯齿略有不同。
-- 跨域又没开 CORS 的样式表读不到，里面的悬停效果在镜内看不到（镜外正常）。
-- API Key 存在 Chrome 的扩展存储里，没有加密。
+[GPL-3.0](LICENSE)
