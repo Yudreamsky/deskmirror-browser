@@ -6,7 +6,7 @@
 (function (root) {
   'use strict';
 
-  const plainOnly = new Set();         // 不认附加参数（thinking、temperature 等）的服务地址：以后只发最基本的请求
+  const levelOf = new Map();           // 服务地址 → 用哪一档请求（见 translateBatch：0 全部参数 + 用量，1 不要用量，2 最基本的）
   let uiLang = 'zh';                    // 错误提示用的界面语言（中文 / 英文）
 
   function setUiLang(lang) {
@@ -99,8 +99,10 @@
    * 翻译一批文字块。每段完整后回调 onSeg(i, text)；返回收到的段数。
    * cfg: { protocol, baseUrl, model, apiKey, extra }；req: { segments, source, target, context }
    * extra 是各家关掉“思考”的参数（见 presets.js），服务不认的话去掉重发一次并记住。
+   * meter（可选）：填上这一次的用量 { in: 发送的 token, out: 接收的 token, est: 是不是按字数估的 }——
+   * 服务报告了就用报告的（Ollama 的 prompt_eval_count / eval_count，OpenAI 兼容接口的 usage），没报告按字数估。
    */
-  async function translateBatch(T, cfg, req, onSeg, signal) {
+  async function translateBatch(T, cfg, req, onSeg, signal, meter) {
     const base = trimBase(cfg.baseUrl);
     if (!base) throw configError(msg('还没有填写翻译服务地址', 'No service address yet'));
     if (!String(cfg.model || '').trim()) throw configError(msg('还没有填写模型名', 'No model name yet'));
@@ -109,66 +111,93 @@
       { role: 'user', content: T.userMessage(req.segments, req.context) },
     ];
     const parser = new T.SegmentParser(req.segments.length, onSeg);
-    if (cfg.protocol === 'ollama') {
-      const body = { model: cfg.model, messages, stream: true, think: false, keep_alive: '30m',
-        options: { temperature: 0.2, num_ctx: 4096 } };
-      const headers = { 'Content-Type': 'application/json' };
-      if (cfg.apiKey) headers.Authorization = 'Bearer ' + cfg.apiKey;   // 直连 ollama.com 云端
-      for (let attempt = 0; attempt < 2; attempt++) {
-        const res = await post(base + '/api/chat', { method: 'POST', headers, body: JSON.stringify(body), signal }, 'ollama');
-        if (res.status === 401 || res.status === 403) throw await errorOf(res);
-        if (!res.ok) {
-          const text = await res.text().catch(() => '');
-          if (attempt === 0 && res.status === 400 && /think/i.test(text)) {
-            delete body.think;   // 这个模型没有思考开关：去掉参数重发
-            continue;
+    const use = meter || {};
+    const started = () => {
+      use.in = T.estimateTokens(messages.map((m) => m.content).join('\n'));
+      use.out = 0;
+      use.est = true;
+    };
+    try {
+      if (cfg.protocol === 'ollama') {
+        const body = { model: cfg.model, messages, stream: true, think: false, keep_alive: '30m',
+          options: { temperature: 0.2, num_ctx: 4096 } };
+        const headers = { 'Content-Type': 'application/json' };
+        if (cfg.apiKey) headers.Authorization = 'Bearer ' + cfg.apiKey;   // 直连 ollama.com 云端
+        for (let attempt = 0; attempt < 2; attempt++) {
+          const res = await post(base + '/api/chat', { method: 'POST', headers, body: JSON.stringify(body), signal }, 'ollama');
+          if (res.status === 401 || res.status === 403) throw await errorOf(res);
+          if (!res.ok) {
+            const text = await res.text().catch(() => '');
+            if (attempt === 0 && res.status === 400 && /think/i.test(text)) {
+              delete body.think;   // 这个模型没有思考开关：去掉参数重发
+              continue;
+            }
+            throw explain(res.status, text, true)
+              || httpError(res.status, msg('Ollama 返回错误', 'Ollama returned an error') + ' HTTP ' + res.status + ' ' + text.slice(0, 160));
           }
-          throw explain(res.status, text, true)
-            || httpError(res.status, msg('Ollama 返回错误', 'Ollama returned an error') + ' HTTP ' + res.status + ' ' + text.slice(0, 160));
-        }
-        for await (const line of lines(res)) {
-          if (!line) continue;
-          let j;
-          try { j = JSON.parse(line); } catch (e) { continue; }
-          if (j.error) throw new Error('Ollama: ' + String(j.error).slice(0, 160));
-          const piece = j.message && j.message.content;
-          if (piece) parser.feedRaw(piece);
-          if (j.done) break;
-        }
-        break;
-      }
-    } else {
-      const headers = { 'Content-Type': 'application/json' };
-      if (cfg.apiKey) headers.Authorization = 'Bearer ' + cfg.apiKey;
-      const plain = { model: cfg.model, messages, stream: true };
-      // DeepSeek、智谱、豆包等默认会“思考”，翻译用不着，关掉快得多也省钱（思考的字数按输出计费）；
-      // 有的模型只接受默认温度（OpenAI 的推理模型），不认的服务去掉这些参数重发一次并记住
-      const full = Object.assign({}, plain, { temperature: 0.2, thinking: { type: 'disabled' } }, cfg.extra || {});
-      for (let attempt = 0; attempt < 2; attempt++) {
-        const body = attempt === 0 && !plainOnly.has(base) ? full : plain;
-        const res = await post(base + '/chat/completions', { method: 'POST', headers, body: JSON.stringify(body), signal }, 'service');
-        if (!res.ok) {
-          if (body === full && (res.status === 400 || res.status === 422)) {
-            plainOnly.add(base);
-            continue;
+          started();
+          for await (const line of lines(res)) {
+            if (!line) continue;
+            let j;
+            try { j = JSON.parse(line); } catch (e) { continue; }
+            if (j.error) throw new Error('Ollama: ' + String(j.error).slice(0, 160));
+            const piece = j.message && j.message.content;
+            if (piece) parser.feedRaw(piece);
+            if (j.done) {
+              if (j.prompt_eval_count != null || j.eval_count != null) {
+                use.in = j.prompt_eval_count || 0;
+                use.out = j.eval_count || 0;
+                use.est = false;
+              }
+              break;
+            }
           }
-          throw await errorOf(res);
+          break;
         }
-        for await (const line of lines(res)) {
-          if (!line.startsWith('data:')) continue;
-          const data = line.slice(5).trim();
-          if (data === '[DONE]') break;
-          let j;
-          try { j = JSON.parse(data); } catch (e) { continue; }
-          if (j.error) throw new Error(msg('服务报错：', 'Service error: ') + JSON.stringify(j.error).slice(0, 160));
-          const d = j.choices && j.choices[0] && j.choices[0].delta;
-          if (d && d.content) parser.feedRaw(d.content);
+      } else {
+        const headers = { 'Content-Type': 'application/json' };
+        if (cfg.apiKey) headers.Authorization = 'Bearer ' + cfg.apiKey;
+        const plain = { model: cfg.model, messages, stream: true };
+        // DeepSeek、智谱、豆包等默认会“思考”，翻译用不着，关掉快得多也省钱（思考的字数按输出计费）；
+        // 有的模型只接受默认温度（OpenAI 的推理模型）。请求分三档：附加参数 + 报告用量 → 只要附加参数 → 最基本的；
+        // 服务不认（400/422）就降一档重发，并记住这个地址用哪一档
+        const full = Object.assign({}, plain, { temperature: 0.2, thinking: { type: 'disabled' } }, cfg.extra || {});
+        const bodies = [Object.assign({}, full, { stream_options: { include_usage: true } }), full, plain];
+        let lv = levelOf.get(base) || 0;
+        for (;;) {
+          const res = await post(base + '/chat/completions', { method: 'POST', headers, body: JSON.stringify(bodies[lv]), signal }, 'service');
+          if (!res.ok) {
+            if (lv < 2 && (res.status === 400 || res.status === 422)) {
+              lv++;
+              levelOf.set(base, lv);
+              continue;
+            }
+            throw await errorOf(res);
+          }
+          started();
+          for await (const line of lines(res)) {
+            if (!line.startsWith('data:')) continue;
+            const data = line.slice(5).trim();
+            if (data === '[DONE]') break;
+            let j;
+            try { j = JSON.parse(data); } catch (e) { continue; }
+            if (j.error) throw new Error(msg('服务报错：', 'Service error: ') + JSON.stringify(j.error).slice(0, 160));
+            if (j.usage && (j.usage.prompt_tokens != null || j.usage.completion_tokens != null)) {
+              use.in = j.usage.prompt_tokens || 0;
+              use.out = j.usage.completion_tokens || 0;
+              use.est = false;
+            }
+            const d = j.choices && j.choices[0] && j.choices[0].delta;
+            if (d && d.content) parser.feedRaw(d.content);
+          }
+          break;
         }
-        break;
       }
+      parser.close();
+      return parser.done.size;
+    } finally {
+      if (use.est) use.out = T.estimateTokens(parser.raw);
     }
-    parser.close();
-    return parser.done.size;
   }
 
   // 明显不是聊天模型的（向量、语音、画图、审核、重排序）不列出来

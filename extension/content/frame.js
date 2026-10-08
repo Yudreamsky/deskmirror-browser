@@ -40,6 +40,9 @@
 .status { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: #78dc8c; }
 .status.busy { color: #78b4ff; } .status.error { color: #ff6e6e; } .status.paused { color: #b9b9be; }
 .status .bk { color: #ffc857; }
+.traffic { flex: 0 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; color: #b7c0cc;
+  font: 12px/1 Consolas, "Cascadia Mono", ui-monospace, monospace; }
+.traffic .up { color: #f0b072; } .traffic .down { color: #8cc8ff; }
 .btn { all: unset; cursor: pointer; height: 20px; min-width: 20px; padding: 0 6px; box-sizing: border-box;
   border-radius: 4px; text-align: center; line-height: 20px; color: #ebeef5; background: rgba(255, 255, 255, 0.12);
   font: 12px/20px "Microsoft YaHei UI", "PingFang SC", system-ui, sans-serif; }
@@ -79,9 +82,12 @@
       this.lang.classList.add('lang');
       this.status = document.createElement('span');
       this.status.className = 'status';
+      this.traffic = document.createElement('span');
+      this.traffic.className = 'traffic';
+      this.traffic.hidden = true;
       this.pauseBtn = this._button('', () => this.h.onPause());
       this.closeBtn = this._button('✕', () => this.h.onClose());
-      this.tab.append(this.title, this.lang, this.status, this.pauseBtn, this.closeBtn);
+      this.tab.append(this.title, this.lang, this.status, this.traffic, this.pauseBtn, this.closeBtn);
       this._texts();
       this.tab.addEventListener('pointerdown', (e) => {
         if (e.target.classList.contains('btn')) return;
@@ -199,6 +205,25 @@
       this.menu.style.top = Math.max(4, y) + 'px';
     }
 
+    /**
+     * 像网速那样显示发送（↑，橙色）、接收（↓，蓝色）的 token：t = { up: '1.2k', down: '3.4k', approx }，null 就不显示；
+     * approx：有一部分是按字数估的，前面加“≈”。tip 是鼠标停上去看的详情。
+     */
+    setTraffic(t, tip) {
+      this.traffic.title = tip || '';
+      const text = t ? (t.approx ? '≈' : '') + '↑' + t.up + ' ↓' + t.down : '';
+      if (text === this.traffic.textContent && this.traffic.hidden === !text) return;
+      const span = (cls, s) => {
+        const e = document.createElement('span');
+        e.className = cls;
+        e.textContent = s;
+        return e;
+      };
+      this.traffic.replaceChildren(...(t ? [(t.approx ? '≈' : ''), span('up', '↑' + t.up), ' ', span('down', '↓' + t.down)] : []));
+      this.traffic.hidden = !text;
+      this.layout();
+    }
+
     /** extra：跟在后面的琥珀色说明（正在用备用）；tip：鼠标停上去显示的详情。 */
     setStatus(text, level, tip, extra) {
       this.status.textContent = text;
@@ -291,9 +316,9 @@
       const below = y - LINE - TAB_H < 0;
       this.tab.classList.toggle('below', below);
       place(this.tab, x - LINE, below ? y + h + LINE : y - LINE - TAB_H, tw, TAB_H);
-      // 正在用备用时状态字长：标签加宽到放得下（最宽和镜框一样）
+      // 正在用备用、显示着用量时字长：标签加宽到放得下（最宽和镜框一样）
       this._wide = false;
-      if (this.status.querySelector('.bk')) {
+      if (this.status.querySelector('.bk') || !this.traffic.hidden) {
         this.tab.style.width = 'max-content';
         const natural = Math.ceil(this.tab.getBoundingClientRect().width) + 1;
         const want = Math.min(Math.max(tw, w + 2 * LINE), Math.max(tw, natural));

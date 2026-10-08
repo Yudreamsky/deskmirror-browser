@@ -65,6 +65,9 @@ node tests\chain.mjs
 :: 画布当底、上面压着网页元素做的节点（Comfy Cloud 的结构）：压在画布上的译文要露出来，输入框和画布照旧是真网页
 node tests\canvas.mjs
 
+:: 用量（顶部栏的 ↑ ↓）：服务报告的用量、不认 stream_options 的服务降一档按字数估、本机 Ollama 的计数、打开魔镜后的累计
+node tests\usage.mjs
+
 :: 镜框标签：正在用备用时加宽到放得下
 node tests\tabwidth.mjs
 

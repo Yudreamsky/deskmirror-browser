@@ -108,13 +108,21 @@ async function onInstalled({ reason, previousVersion }) {
 chrome.runtime.onInstalled.addListener(onInstalled);
 
 // ------------------------------------------------------------------ 翻译
-/** 用一个服务翻译 req（假翻译直接在这里出结果）。 */
-function runEngine(e, req, onSeg, signal) {
+/** 用一个服务翻译 req（假翻译直接在这里出结果，不算用量）；meter 填上这一次发送、接收的 token。 */
+function runEngine(e, req, onSeg, signal, meter) {
   if (e.protocol === 'mock') {
     req.segments.forEach((s, i) => onSeg(i, T.mockTranslate(s, req.target, 'zh')));
     return Promise.resolve(req.segments.length);
   }
-  return LLM.translateBatch(T, e, req, onSeg, signal);
+  return LLM.translateBatch(T, e, req, onSeg, signal, meter);
+}
+
+/** 这一批所有尝试（包括出错换下一个之前的）加起来的用量；一次都没真正发出去就是 undefined。 */
+function usageOf(meters) {
+  const done = meters.filter((m) => m.in !== undefined);
+  if (!done.length) return undefined;
+  return { in: done.reduce((a, m) => a + m.in, 0), out: done.reduce((a, m) => a + m.out, 0), est: done.some((m) => m.est),
+    n: done.length };
 }
 
 function limitOf(e) {
@@ -164,13 +172,19 @@ chrome.runtime.onConnect.addListener((port) => {
         post({ type: 'engine', idx, total: chain.length, label: PS.engineLabel(e, lang), model: e.protocol === 'mock' ? '' : e.model,
           local: PS.isLocal(e), primary: PS.engineLabel(chain[0], lang), reason: why ? why.error : '' });
       };
+      const meters = [];
+      const run = (e, req, onSeg, signal) => {
+        const meter = {};
+        meters.push(meter);
+        return runEngine(e, req, onSeg, signal, meter);
+      };
       const r = await C.translate({
-        chain, health: h, now: Date.now(), req: m, signal: ac.signal, run: runEngine, limitOf, timeoutError, emptyError,
+        chain, health: h, now: Date.now(), req: m, signal: ac.signal, run, limitOf, timeoutError, emptyError,
         onSeg: (i, text) => post({ type: 'seg', id: m.id, i, text }),
         onUse: announce,
       });
       keepHealth();
-      post({ type: 'done', id: m.id, error: r.ok ? undefined : summary(r.errors) });
+      post({ type: 'done', id: m.id, error: r.ok ? undefined : summary(r.errors), usage: usageOf(meters) });
     } catch (e) {
       if (!ac.signal.aborted) post({ type: 'done', id: m.id, error: String((e && e.message) || e) });
     } finally {

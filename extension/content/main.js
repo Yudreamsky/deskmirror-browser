@@ -31,11 +31,13 @@
     let seq = 0;
     const api = {
       onEngine: null,                 // 后台换了服务（备用阵列）时调用
+      onUsage: null,                  // 一批译完，带回这一批发送、接收的 token
       reply(m) {
         if (m.type === 'engine') {
           if (api.onEngine) api.onEngine(m);
           return;
         }
+        if (m.type === 'done' && m.usage && api.onUsage) api.onUsage(m.usage);
         const j = jobs.get(m.id);
         if (!j) return;
         if (m.type === 'seg') j.onSeg(m.i, m.text);
@@ -174,6 +176,25 @@
         else frame.setStatus(t('ready'), 'ok', tip, extra);
       },
     });
+    // 顶部栏像网速那样显示这次打开魔镜以来发送（↑）、接收（↓）的 token
+    s.traffic = { in: 0, out: 0, n: 0, est: false };
+    const showTraffic = () => {
+      const t = s.traffic;
+      const fmt = (n) => n.toLocaleString(DM.uiLang === 'zh' ? 'zh-CN' : 'en-US');
+      let tip = T.ui(DM.uiLang, 'traffic', { in: fmt(t.in), out: fmt(t.out), n: fmt(t.n) });
+      if (t.est) tip += '\n' + T.ui(DM.uiLang, 'trafficEst');
+      frame.setTraffic(t.n ? { up: T.shortCount(t.in), down: T.shortCount(t.out), approx: t.est } : null, tip);
+    };
+    s.showTraffic = showTraffic;
+    if ('onUsage' in backend) {
+      backend.onUsage = (u) => {
+        s.traffic.in += u.in || 0;
+        s.traffic.out += u.out || 0;
+        s.traffic.n += u.n || 1;
+        s.traffic.est = s.traffic.est || !!u.est;
+        showTraffic();
+      };
+    }
     if ('onEngine' in backend) {
       backend.onEngine = (m) => {
         s.engine = m.idx > 0 ? m : null;
@@ -273,6 +294,7 @@
         DM.uiLang = lang;
         s.frame.setUiLang(lang);
         s.units._status();
+        s.showTraffic();
       }
     }
     const source = st.source || 'auto', target = st.target || s.units.opts.target;

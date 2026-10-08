@@ -1,5 +1,8 @@
 # DeskMirror for browsers · Changes
 
+## 0.4.2 (2026-10-08)
+- The mirror's top bar shows the tokens sent (↑) and received (↓) since the mirror opened, like a network monitor; hover for exact numbers. When a service does not report usage, it is estimated from the text length and marked with "≈".
+
 ## 0.4.1 (2026-10-08)
 - Fixed: on pages where text sits on top of a canvas (such as the nodes and Markdown notes in Comfy Cloud, or chart legends), the mirror showed no translation. That text is now translated; the canvas itself and input boxes still show the real page.
 

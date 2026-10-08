@@ -33,6 +33,7 @@
       from: '原文', to: '译成', ready: '就绪', paused: '已暂停', busy: '翻译中 {n}', error: '出错：{e}',
       updated: '扩展已更新，请重新打开魔镜', disconnected: '后台断开了',
       backup: '备用{n} {m}', backupTip: '主力（{p}）出错：{e}\n现在用备用{n}：{l}',
+      traffic: '这次打开魔镜以来：\n发送 {in} 个 token，接收 {out} 个 token（{n} 次请求）', trafficEst: '有的服务不报告用量，这部分按字数估算',
       src_auto: '自动识别', src_en: '英文', src_zh: '中文', src_ja: '日文', src_ko: '韩文', src_id: '印尼文',
       s_auto: '自动', s_en: '英', s_zh: '中', s_ja: '日', s_ko: '韩', s_id: '印尼',
       t_zh_Hans: '中', t_zh_Hant: '繁', t_en: '英', t_ja: '日', t_ko: '韩', t_id: '印尼',
@@ -42,11 +43,28 @@
       from: 'Original', to: 'Translate into', ready: 'Ready', paused: 'Paused', busy: 'Translating {n}', error: 'Error: {e}',
       updated: 'The extension was updated; open the mirror again', disconnected: 'Lost the connection to the extension',
       backup: 'backup {n} {m}', backupTip: 'The main service ({p}) failed: {e}\nNow using backup {n}: {l}',
+      traffic: 'Since the mirror opened:\nsent {in} tokens, received {out} tokens ({n} requests)',
+      trafficEst: 'Some services do not report usage; those are estimated from the text length',
       src_auto: 'Auto-detect', src_en: 'English', src_zh: 'Chinese', src_ja: 'Japanese', src_ko: 'Korean', src_id: 'Indonesian',
       s_auto: 'Auto', s_en: 'EN', s_zh: 'ZH', s_ja: 'JA', s_ko: 'KO', s_id: 'ID',
       t_zh_Hans: 'ZH', t_zh_Hant: 'ZH-T', t_en: 'EN', t_ja: 'JA', t_ko: 'KO', t_id: 'ID',
     },
   };
+
+  /** 粗估 token 数（服务不报告用量时用）：汉字、假名、韩文每个字算 1 个，其他文字大约 4 个字符 1 个。 */
+  function estimateTokens(text) {
+    const s = String(text || '');
+    const cjk = (s.match(/[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af\uf900-\ufaff]/g) || []).length;
+    return cjk + Math.ceil((s.length - cjk) / 4);
+  }
+
+  /** 网速那样的写法：999、1.2k、12k、1.3M。 */
+  function shortCount(n) {
+    if (n < 1000) return String(Math.round(n));
+    if (n < 10000) return (Math.round(n / 100) / 10) + 'k';
+    if (n < 1e6) return Math.round(n / 1000) + 'k';
+    return (Math.round(n / 1e5) / 10) + 'M';
+  }
 
   /** 带圈的序号 ①②③……（备用阵列里第几个）。 */
   function circled(n) {
@@ -335,7 +353,7 @@
   }
 
   const api = {
-    TARGETS, SOURCES, NATIVE_NAMES, UI, circled, uiLang, ui, langLabel, guessNative, systemPrompt, userMessage, SegmentParser, stripThink,
+    TARGETS, SOURCES, NATIVE_NAMES, UI, circled, estimateTokens, shortCount, uiLang, ui, langLabel, guessNative, systemPrompt, userMessage, SegmentParser, stripThink,
     parseTagged, stripTags, scriptCounts, hasWords, isAlreadyTarget, matchesSource, mockTranslate, hash,
   };
   if (typeof module === 'object' && module.exports) module.exports = api;
