@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Carousels</title>
+<!-- 测试页：三种横向移动的卡片行（像 labs.google/playground 的 Swiper 轮播）。
+  1. 影子 DOM 里的轮播：每次用 CSS 过渡平移一张卡；到头先瞬间跳回去（不过渡）、强制排版，再接着过渡（无缝循环）。
+     下一段过渡在动画帧回调里开始（像 Swiper）：这时过渡刚建好、开始时间下一帧才定
+  2. CSS 动画（@keyframes）无限循环的跑马灯
+  3. 脚本用 element.animate() 建的来回动画 -->
+<style>
+  body { margin: 0; font: 16px/1.4 system-ui, sans-serif; background: #15171c; color: #eef0f4; }
+  h2 { margin: 22px 20px 8px; font-size: 18px; }
+  .row { overflow: hidden; height: 150px; }
+  .track { display: flex; gap: 20px; width: max-content; }
+  .card { width: 220px; height: 140px; border-radius: 12px; flex: none; display: flex; align-items: flex-end; padding: 10px;
+    box-sizing: border-box; font-weight: 600; color: #fff; }
+  .marquee { animation: marquee 6s linear infinite; }
+  @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-960px); } }
+</style>
+</head>
+<body>
+<h2>Explore what others are making</h2>
+<x-carousel></x-carousel>
+<h2>Featured games scroll by on their own</h2>
+<div class="row"><div class="track marquee" id="marquee"></div></div>
+<h2>New experiments move back and forth</h2>
+<div class="row"><div class="track" id="waapi"></div></div>
+<script>
+  const colors = ['#c2410c', '#0369a1', '#15803d', '#7e22ce', '#b91c1c', '#0f766e'];
+  const cards = (n, label) => Array.from({ length: n }, (_, i) =>
+    `<div class="card" style="background:${colors[i % colors.length]}">${label} number ${i + 1}</div>`).join('');
+  document.getElementById('marquee').innerHTML = cards(10, 'Puzzle');
+  document.getElementById('waapi').innerHTML = cards(10, 'Experiment');
+  document.getElementById('waapi').animate([{ transform: 'translateX(0px)' }, { transform: 'translateX(-720px)' }],
+    { duration: 5000, iterations: Infinity, direction: 'alternate', easing: 'ease-in-out' });
+
+  customElements.define('x-carousel', class extends HTMLElement {
+    connectedCallback() {
+      const sr = this.attachShadow({ mode: 'open' });
+      sr.innerHTML = `<style>
+        :host { display: block; overflow: hidden; height: 150px; }
+        .wrapper { display: flex; gap: 20px; width: max-content; transition-property: transform; transition-timing-function: linear; }
+        .card { width: 220px; height: 140px; border-radius: 12px; flex: none; display: flex; align-items: flex-end; padding: 10px;
+          box-sizing: border-box; font-weight: 600; color: #fff; }
+      </style><div class="wrapper">${cards(12, 'Game')}</div>`;
+      const w = sr.querySelector('.wrapper');
+      const step = 240;
+      let i = 0;
+      const go = () => {
+        i++;
+        w.style.transitionDuration = '1500ms';
+        w.style.transform = `translate3d(${-i * step}px, 0px, 0px)`;
+      };
+      w.addEventListener('transitionend', () => requestAnimationFrame(() => {
+        if (i >= 4) {               // 无缝循环：瞬间跳回去，强制排版，再接着走
+          i = 0;
+          w.style.transitionDuration = '0ms';
+          w.style.transform = 'translate3d(0px, 0px, 0px)';
+          void w.offsetWidth;
+        }
+        go();
+      }));
+      requestAnimationFrame(() => requestAnimationFrame(go));
+    }
+  });
+</script>
+</body>
+</html>

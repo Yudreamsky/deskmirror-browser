@@ -112,6 +112,12 @@
       this._frames = 0;
       this._holesDirty = true;
       this._keyboard = false;
+      this.mirrors = new Map();         // 真网页的过渡、脚本动画 → 复制品里照着建的那个
+      this.aligned = new Set();         // 换到真网页时间轴上的复制品 CSS 动画（拆掉时一起取消）
+      this._unresolved = new Set();     // 真网页刚开始、开始时间还没定的动画：定了再对齐一次
+      this._animPending = new Set();    // 样式变了（可能刚开始过渡）、这一帧要看一眼的真网页元素
+      this._animSeen = 0;               // 网页上出现过动画没有（一个都没有就不用每帧看）
+      this._animRoots = new WeakSet();  // 已经在听动画事件的 document、影子根
     }
 
     on(name, fn) { this.listeners[name].push(fn); }
@@ -141,7 +147,8 @@
       this.tx.appendChild(frame);
       this.frame = frame;
       if (this.compositorSync) this.base.classList.add('live');
-      this.shell.root.appendChild(this.clip);
+      // 放在最底下：镜框、标签、气泡压在译文上面（冷气泡点开时，镜框已经先放好了）
+      this.shell.root.prepend(this.clip);
       this._sizeFrame();
       const cdoc = frame.contentDocument;
       // 保持和原网页同样的排版模式（标准 / 有限怪异 / 怪异模式），否则排版会不一样
@@ -168,12 +175,18 @@
       this.observer = new MutationObserver((recs) => this._onMutations(recs));
       this._observe(document);
       this._listen(window, document);
+      // 复制时遇到的影子根马上开始监听（等 0.3 秒后的检查才听，这期间影子 DOM 里的改动就漏了，复制品停在旧样子）
+      if (this._earlyShadows) {
+        for (const sr of this._earlyShadows) this._watchShadow(sr);
+        this._earlyShadows = null;
+      }
       cdoc.addEventListener('load', () => this._afterLoad(), true);
 
       this.fixBroken();
       this._syncAllScroll();
       this._scanFixed(document.documentElement);
       this.refreshHoles();
+      this._sweepAnimations();
       this._tick = this._tick.bind(this);
       this._raf = requestAnimationFrame(this._tick);
       this.stats.buildMs = performance.now() - t0;
@@ -189,6 +202,11 @@
       this.fixed.clear();
       for (const st of this.inner.values()) for (const k of st.kids || []) k.anim.cancel();
       this.inner.clear();
+      for (const m of this.mirrors.values()) m.cancel();
+      this.mirrors.clear();
+      for (const x of this.aligned) x.cancel();
+      this.aligned.clear();
+      this._unresolved.clear();
       if (this.clip) this.clip.remove();
       this.frame = null;
     }
@@ -228,6 +246,15 @@
       add(doc, 'change', (e) => this._formState(e.target), true);
       add(doc, 'load', () => { this._holesDirty = true; }, true);
       add(doc, 'toggle', (e) => this._topLayer(e.target), true);
+      // 过渡、动画开始或取消：影子 DOM 里的事件传不到 document，每个影子根也要听
+      this._onAnimEvent = (e) => {
+        this._animSeen = 1;
+        if (e.type.endsWith('cancel')) this._animStale = true;
+        const t = e.composedPath ? e.composedPath()[0] : e.target;
+        if (t && t.nodeType === 1) this._animPending.add(t);
+      };
+      this._listenAnim(doc);
+      for (const sr of this.shadows.keys()) this._listenAnim(sr);
       this._shadowTimer = setInterval(() => this._checkPending(), 300);
     }
 
@@ -363,6 +390,7 @@
       }
       this.shadows.set(sr, csr);
       this.map.set(sr, csr);
+      this._listenAnim(sr);
       for (let ch = sr.firstChild; ch; ch = ch.nextSibling) {
         const cc = this._cloneDeep(ch);
         if (cc) csr.appendChild(cc);
@@ -609,6 +637,7 @@
         } else {
           this._syncAttr(t, r.attributeName, r.attributeNamespace);
           attrs.push(t);
+          if (t.nodeType === 1) this._animPending.add(t);
         }
       }
       for (const p of parents) this.syncChildren(p);
@@ -1007,6 +1036,152 @@
       this._raf = requestAnimationFrame(this._tick);
       this.syncDocScroll();
       if (++this._frames % 15 === 0) this._syncAllScroll();
+      // 动画、过渡跟真网页对齐：样式刚变的元素在这一帧画出来之前就看一眼；每半秒全部对一遍
+      if (this._animPending.size) {
+        if (this._animSeen) {
+          let n = 0;
+          for (const el of this._animPending) {
+            if (++n > 150) break;
+            this._syncAnimsOf(el);
+          }
+        }
+        this._animPending.clear();
+      }
+      if (this._unresolved.size) {
+        for (const a of this._unresolved) {
+          if (typeof a.startTime === 'number' || a.playState === 'idle' || a.playState === 'paused') {
+            this._unresolved.delete(a);
+            if (a.playState !== 'idle') this._syncAnim(a);
+          }
+        }
+      }
+      if (this._animStale) this._dropStale();
+      if (this._frames % 30 === 0) this._sweepAnimations();
+    }
+
+    // ---------------------------------------------------------------- 动画、过渡
+    // 复制品里的 CSS 动画、过渡是自己跑的，和真网页对不上：建复制品时正在跑的过渡直接到了终点，循环动画的进度不一样；
+    // 网页脚本“先瞬间跳回去、马上再过渡过去”（轮播图无缝循环）时，复制品只看到最后的样式，少了那一跳，停在终点不动。
+    // 所以照着真网页的动画对齐：CSS 动画把复制品里同名的那个对齐；过渡和脚本建的动画在复制品里照着建一个
+    // 一模一样的（关键帧、时长、曲线），复制品自己那个同一属性的过渡取消掉。
+    // 对齐的办法：复制品里的动画直接用真网页的时间轴、同样的开始时间，每一帧两边算出来的进度完全一样
+    // （各用各的时间轴再对进度，两边时钟的取整不一样，会差零点一毫秒，循环动画转回开头的那一帧就会错开一整圈）。
+    // 影子 DOM 里的动画 document.getAnimations() 拿不到，过渡事件也传不到 document：每个影子根单独拿、单独听。
+    _listenAnim(root) {
+      if (!this._onAnimEvent || this._animRoots.has(root)) return;
+      this._animRoots.add(root);
+      for (const ev of ['transitionrun', 'transitioncancel', 'animationstart', 'animationcancel']) {
+        root.addEventListener(ev, this._onAnimEvent, true);
+        this._offs.push(() => root.removeEventListener(ev, this._onAnimEvent, true));
+      }
+    }
+
+    /** 全部对一遍：document 和每个影子根里正在跑的动画；真网页那边已经没有了的，复制品里照着建的也拿掉。 */
+    _sweepAnimations() {
+      this._animStale = false;
+      if (!this.cwin) return;
+      const live = new Set();
+      const roots = [document];
+      for (const sr of this.shadows.keys()) if (sr.host && sr.host.isConnected) roots.push(sr);
+      for (const root of roots) {
+        let list;
+        try { list = root.getAnimations(); } catch (e) { continue; }
+        for (const a of list) {
+          live.add(a);
+          this._syncAnim(a);
+        }
+      }
+      if (live.size) this._animSeen = 1;
+      for (const x of this.aligned) if (x.playState === 'idle' || !x.effect || !x.effect.target || !x.effect.target.isConnected) this.aligned.delete(x);
+      for (const [a, m] of this.mirrors) {
+        if (!live.has(a)) {
+          m.cancel();
+          this.mirrors.delete(a);
+        }
+      }
+    }
+
+    _dropStale() {
+      this._animStale = false;
+      for (const [a, m] of this.mirrors) {
+        if (a.playState === 'idle') {
+          m.cancel();
+          this.mirrors.delete(a);
+        }
+      }
+    }
+
+    _syncAnimsOf(el) {
+      if (!el.isConnected || !this.map.has(el)) return;
+      let list;
+      try { list = el.getAnimations(); } catch (e) { return; }
+      for (const a of list) this._syncAnim(a);
+    }
+
+    /** 复制品里这个元素（或它的伪元素）现在的动画。 */
+    _animsOf(c, pseudo) {
+      try {
+        return pseudo ? c.getAnimations({ subtree: true }).filter((y) => y.effect && y.effect.target === c) : c.getAnimations();
+      } catch (e) {
+        return [];
+      }
+    }
+
+    _syncAnim(a) {
+      const ef = a.effect;
+      const tgt = ef && ef.target;
+      if (!tgt || a.timeline !== document.timeline) return;      // 滚动驱动的动画跟着滚动走，不用管
+      const c = this.map.get(tgt);
+      if (!c || c.nodeType !== 1 || !c.isConnected) return;
+      const pseudo = ef.pseudoElement || null;
+      const same = (y) => ((y.effect && y.effect.pseudoElement) || null) === pseudo;
+      if (a.animationName !== undefined) {
+        // CSS 动画：复制品里有同名的（样式一样），把它对齐
+        const x = this._animsOf(c, pseudo).find((y) => y.animationName === a.animationName && same(y));
+        if (x) {
+          this._align(x, a);
+          this.aligned.add(x);
+        }
+        return;
+      }
+      let m = this.mirrors.get(a);
+      if (!m || !m.effect || m.effect.target !== c) {
+        if (m) m.cancel();
+        if (a.transitionProperty) {
+          for (const y of this._animsOf(c, pseudo)) if (y.transitionProperty === a.transitionProperty && same(y)) y.cancel();
+        }
+        try {
+          const kf = ef.getKeyframes().map(({ computedOffset, ...k }) => k);
+          const t = ef.getTiming();
+          const effect = new this.cwin.KeyframeEffect(c, kf, { delay: t.delay, endDelay: t.endDelay, duration: t.duration,
+            iterations: t.iterations, iterationStart: t.iterationStart, direction: t.direction, easing: t.easing, fill: t.fill,
+            composite: ef.composite || 'replace', pseudoElement: pseudo || undefined });
+          m = new this.cwin.Animation(effect, document.timeline);
+        } catch (e) {
+          return;
+        }
+        this.mirrors.set(a, m);
+      }
+      this._align(m, a);
+    }
+
+    /** 用真网页的时间轴、同样的开始时间（暂停的就停在同一处），快慢也一样。 */
+    _align(x, a) {
+      try {
+        if (x.timeline !== a.timeline) x.timeline = a.timeline;
+        if (x.playbackRate !== a.playbackRate) x.playbackRate = a.playbackRate;
+        if (a.playState === 'paused') {
+          if (x.playState !== 'paused') x.pause();
+          if (typeof a.currentTime === 'number' && x.currentTime !== a.currentTime) x.currentTime = a.currentTime;
+        } else if (typeof a.startTime === 'number') {
+          if (x.startTime !== a.startTime) x.startTime = a.startTime;
+        } else {
+          // 真网页这个动画刚开始，开始时间下一帧才定：先从同样的进度跟着播，定了再对齐
+          if (typeof a.currentTime === 'number') x.currentTime = a.currentTime;
+          if (x.playState !== 'running') x.play();
+          this._unresolved.add(a);
+        }
+      } catch (e) { /* 这个动画已经没了 */ }
     }
 
     // ---------------------------------------------------------------- 悬停、焦点

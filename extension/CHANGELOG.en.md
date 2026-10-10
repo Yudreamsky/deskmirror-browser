@@ -1,5 +1,13 @@
 # DeskMirror for browsers · Changes
 
+## 0.7.0 (2026-10-10)
+- A grip at the left end of the tab: drag the mirror by it to the left or right edge of the page and it shrinks into a ball docked there, half tucked in, and translation pauses. Drag the ball out and it smoothly turns into a dashed frame that follows the pointer while translation starts; let go and it lands as the mirror. You can go back and forth in one drag.
+- New option "Show the mirror bubble on every page" (Settings, Appearance): every page you open gets a mirror bubble half tucked into the edge; click it to open the mirror, and closing the mirror shrinks it back into the bubble. Pressing Space three times in text boxes then works on every page too. The bubble copies and translates nothing until you open it, adding about 10 ms per page. Chrome asks for access to all websites when you turn it on.
+- When a page shows only the bubble, the toolbar icon or Alt+Shift+M opens it into the mirror.
+- Cards that move by themselves (carousels and marquees, such as the horizontal cards on labs.google/playground) now stay aligned inside the mirror: the copy follows the page's own animations and transitions. Changes inside shadow DOM right after the mirror opens are no longer missed.
+- Closing the mirror stops unfinished translation requests at once, so they no longer use tokens.
+- Printing a page no longer prints the frame or the bubble.
+
 ## 0.6.0 (2026-10-08)
 - Input box translation: press Space three times in a text box on a page (at most half a second between presses) to translate what you typed, in your own language, into the "Translate input boxes into" language and replace it; Ctrl+Z undoes it. Works in single-line, multi-line and rich-text boxes; spaces for indentation or while choosing IME characters do not trigger it, and nothing is replaced if you keep typing meanwhile. Works on pages where you have opened the mirror, even after closing it.
 

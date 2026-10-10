@@ -17,10 +17,15 @@ const TEXT = {
     nativeHint: '界面语言跟着母语（中文母语用中文界面，其他用英文界面），译文默认译成母语。',
     source: '原文', target: '译成',
     inputTarget: '输入框翻译成',
-    inputHint: '在网页的输入框里连按三次空格，把框里的字翻译成这种语言并直接替换（按 Ctrl+Z 撤回）。在打开过魔镜的网页上才能用，打开后关掉魔镜也行。',
+    inputHint: '在网页的输入框里连按三次空格，把框里的字翻译成这种语言并直接替换（按 Ctrl+Z 撤回）。在打开过魔镜的网页上才能用（关掉魔镜也行）；打开下面“外观”里的“所有网页默认显示魔镜气泡”后，所有网页都能用。',
     dirHint: '指定原文后只翻这种文字（比如日文网页上的英文菜单就不翻）。镜框标签上的语言按钮也能随时切换，选了马上按新方向重翻；这里改了，打开着的魔镜也会跟着换。',
     lookCard: '外观', skinClassic: '经典（和桌面版一样）', skinGlass: '液态玻璃',
-    skinHint: '镜框、标签和气泡的样子；液态玻璃跟着系统的浅色 / 深色。打开着的魔镜马上跟着换。标签上的“–”能把魔镜收起成气泡，拖到页面左右边缘会自动吸附，点一下弹回来。',
+    skinHint: '镜框、标签和气泡的样子；液态玻璃跟着系统的浅色 / 深色。打开着的魔镜马上跟着换。按住标签左头的抓手把魔镜拖到页面左右边缘，它会缩成球吸在边上、藏进一半（停止翻译）；从边上把球拖出来，它变成虚线框跟着鼠标走（开始翻译），松手就是魔镜。点一下球、或者标签上的“–”也行。',
+    autoBubble: '所有网页默认显示魔镜气泡',
+    autoHint: '打开后，每个网页一打开，边上就有一个藏起一半的魔镜气泡，点一下打开魔镜，关掉魔镜又缩回气泡；输入框连按三次空格也在所有网页上都能用。打开时 Chrome 会问一次能不能“读取和更改所有网站上的数据”，扩展要靠它在每个网页上放气泡；气泡不读网页上的字，点开魔镜才开始翻译。',
+    a_on: '已打开：开着的网页和以后打开的网页边上都有气泡', a_off: '已关闭：网页上不再放气泡',
+    a_noPerm: '没有拿到访问所有网站的权限，没有打开',
+    a_lost: '访问所有网站的权限被收回了（在 Chrome 的扩展管理里），气泡放不进网页；重新勾上会再请求一次',
     service: '翻译服务', svcLabel: '服务',
     chainHint: '可以排好几个服务：按顺序用，前一个出错（额度用完、Key 不对、模型下线、连不上、太慢）就自动换下一个，已经译好的不重翻；出错的过一会儿再回头试。',
     primary: '主力', backup: '备用', add: '＋ 添加备用', testAll: '测试全部', editing: '下面改的是 {n} {r}',
@@ -52,7 +57,8 @@ const TEXT = {
     scan: '用微信扫一扫', optional: '完全自愿，不解锁任何功能，不打赏也一样用。', kofi: '海外用户：{link}（可用 PayPal 或银行卡）',
     how: [
       '点工具栏上的“镜”图标，或按 <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd>，在当前网页打开魔镜；再按一次关掉。',
-      '拖动镜子上方的深色标签移动；拖蓝色边框调整大小。',
+      '在“外观”里打开“所有网页默认显示魔镜气泡”，每个网页边上都有一个气泡，点一下就打开魔镜。',
+      '拖标签左头的抓手（或整个标签）移动；拖到页面左右边缘收成气泡，从边上拖出来又变回魔镜；拖蓝色边框调整大小。',
       '点标签上的语言按钮（如“自动→中”）换翻译方向；按住 <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>O</kbd> 看原文。',
       '镜子里的链接、按钮、输入框照常能点，点到的是下面的真网页。',
       '在输入框里连按三次空格，把框里的字翻译成“输入框翻译成”的语言（Ctrl+Z 撤回）。',
@@ -68,10 +74,15 @@ const TEXT = {
     nativeHint: 'The interface follows your language (Chinese or English), and translations go into it by default.',
     source: 'Original', target: 'Translate into',
     inputTarget: 'Translate input boxes into',
-    inputHint: 'Press Space three times in a text box on a page to translate what you typed into this language and replace it (Ctrl+Z undoes it). Works on pages where you have opened the mirror, even after you close it.',
+    inputHint: 'Press Space three times in a text box on a page to translate what you typed into this language and replace it (Ctrl+Z undoes it). Works on pages where you have opened the mirror, even after you close it; with "Show the mirror bubble on every page" (under Appearance below) it works on every page.',
     dirHint: 'With a specific original language, only text in that language is translated (for example, English menus on a Japanese page stay as they are). The language button on the mirror\'s tab switches directions any time and re-translates right away; changes here apply to open mirrors too.',
     lookCard: 'Appearance', skinClassic: 'Classic (like the desktop app)', skinGlass: 'Liquid Glass',
-    skinHint: 'How the frame, tab and bubble look; Liquid Glass follows the system light or dark mode. Open mirrors switch right away. The "–" on the tab collapses the mirror into a bubble that snaps to the left or right edge; click it to bring the mirror back.',
+    skinHint: 'How the frame, tab and bubble look; Liquid Glass follows the system light or dark mode. Open mirrors switch right away. Drag the grip at the left end of the tab to the left or right edge of the page and the mirror shrinks into a ball docked there, half tucked in (translation pauses). Drag the ball out and it becomes a dashed frame that follows the pointer (translation starts); let go and it is the mirror again. Clicking the ball, or "–" on the tab, also works.',
+    autoBubble: 'Show the mirror bubble on every page',
+    autoHint: 'Every page you open gets a mirror bubble half tucked into the edge: click it to open the mirror, and closing the mirror shrinks it back into the bubble. Pressing Space three times in text boxes then works on every page too. Chrome asks once to "read and change all your data on all websites", which the extension needs to put the bubble on each page; the bubble reads nothing on the page, and translation starts only when you open the mirror.',
+    a_on: 'On: open pages and every page you open from now on get a bubble', a_off: 'Off: pages no longer get a bubble',
+    a_noPerm: 'Access to all websites was not granted, so this stays off',
+    a_lost: 'Access to all websites was taken away in Chrome\'s extension settings, so the bubble can\'t be added; tick the box to ask again',
     service: 'Translation service', svcLabel: 'Service',
     chainHint: 'You can line up several services. They are used in order: when one fails (out of credit, wrong key, model retired, unreachable, too slow), the next one takes over without redoing finished text, and the failed one is retried after a while.',
     primary: 'Main', backup: 'Backup', add: '+ Add a backup', testAll: 'Test all', editing: 'Editing {n} {r}',
@@ -110,7 +121,8 @@ const TEXT = {
     kofi: 'Buy me a coffee on {link} (PayPal or card)',
     how: [
       'Click the mirror icon in the toolbar, or press <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd>, to open the mirror on the current page; again to close it.',
-      'Drag the dark tab above the mirror to move it; drag the blue border to resize it.',
+      'Turn on "Show the mirror bubble on every page" under Appearance, and every page gets a bubble at the edge; click it to open the mirror.',
+      'Drag the grip at the left end of the tab (or the whole tab) to move the mirror; drag it to the left or right edge to dock it as a bubble, and drag the bubble out to get the mirror back. Drag the blue border to resize it.',
       'Click the language button on the tab (e.g. "Auto→EN") to switch directions; hold <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>O</kbd> to peek at the original.',
       'Links, buttons and input boxes inside the mirror still work; clicks go to the real page underneath.',
       'Press Space three times in a text box to translate it into the "Translate input boxes into" language (Ctrl+Z undoes it).',
@@ -478,6 +490,35 @@ for (const b of document.querySelectorAll('.skin')) {
   });
 }
 
+// ------------------------------------------------------------------ 所有网页默认显示魔镜气泡
+// 勾上时先请求访问所有网站（Chrome 弹窗问一次；要在点击里直接请求），拿到了才存下；后台按设置登记内容脚本
+const ALL_SITES = { origins: ['https://*/*', 'http://*/*'] };
+
+async function showAuto() {
+  let has = false;
+  try { has = await chrome.permissions.contains(ALL_SITES); } catch (e) { /* 查不到就当没有 */ }
+  $('autoBubble').checked = !!saved.autoBubble && has;
+  if (saved.autoBubble && !has) say('autoMsg', t('a_lost'), 'err');
+  else if ($('autoMsg').classList.contains('err')) say('autoMsg', '');
+}
+
+$('autoBubble').addEventListener('change', async () => {
+  const box = $('autoBubble');
+  if (box.checked) {
+    let ok = false;
+    try { ok = await chrome.permissions.request(ALL_SITES); } catch (e) { ok = false; }
+    if (!ok) {
+      box.checked = false;
+      say('autoMsg', t('a_noPerm'), 'err');
+      return;
+    }
+  }
+  await saveSettings({ autoBubble: box.checked });
+  say('autoMsg', t(box.checked ? 'a_on' : 'a_off'), box.checked ? 'ok' : '');
+});
+chrome.permissions.onAdded.addListener(showAuto);
+chrome.permissions.onRemoved.addListener(showAuto);
+
 // ------------------------------------------------------------------ 语言
 $('native').addEventListener('change', async () => {
   const before = saved.native;
@@ -787,6 +828,7 @@ async function load() {
   $('source').value = saved.source || 'auto';
   push();
   showSkin(saved.skin);
+  showAuto();
   loadHealth();
   banner();
   if (installType === 'development') checkUpdate();

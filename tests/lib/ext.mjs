@@ -44,12 +44,12 @@ export class PipeCDP {
   }
 }
 
-export async function launchWithExtension({ lang = 'zh-CN' } = {}) {
+export async function launchWithExtension({ lang = 'zh-CN', args = [] } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dmb-ext-'));
   const proc = spawn(CHROME, [
     `--user-data-dir=${dir}`, '--remote-debugging-pipe', '--enable-unsafe-extension-debugging', '--headless=new',
     '--no-first-run', '--no-default-browser-check', '--window-size=1280,860', '--force-device-scale-factor=1',
-    `--lang=${lang}`, 'about:blank',
+    `--lang=${lang}`, ...args, 'about:blank',
   ], { stdio: ['ignore', 'ignore', 'ignore', 'pipe', 'pipe'] });
   const cdp = new PipeCDP(proc.stdio[3], proc.stdio[4]);
   const b = {

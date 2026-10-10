@@ -40,7 +40,7 @@
 </head>
 <body>
 <main>
-  <h1>Chrome 应用商店 · 填写清单（桌面魔镜 0.6.0）</h1>
+  <h1>Chrome 应用商店 · 填写清单（桌面魔镜 0.7.0）</h1>
   <p class="sub warn">第一次提交因“关键字垃圾内容”被拒：说明里列了一长串服务商名字。下面三份说明已经改成不列名单，重新复制、替换后再提交审核。以后写说明也不要列品牌名单。</p>
   <p class="sub">一边开着开发者后台，一边开着这一页：文字点“复制”再粘贴进对应的框；图片从
     <code>store\images</code> 文件夹上传。扩展的名字和一句话简介来自 zip 包本身，后台里不用填。</p>
@@ -62,7 +62,8 @@
 • 按住 Ctrl+Alt+O 临时看原文；点标签上的语言按钮随时换翻译方向。
 
 【收起成气泡】
-点标签上的“–”，魔镜平滑地缩成一个小气泡贴在页面边缘；拖到左边或右边会自动吸附，点一下又弹回原来的位置。
+按住标签左头的抓手把魔镜拖到页面边缘，它会平滑地缩成一个小球吸在边上，暂停翻译；把球从边上拖出来，它变成虚线框跟着鼠标走，同时开始翻译，松手就是魔镜。点一下球也能弹回原来的位置。
+设置里还可以打开“所有网页默认显示魔镜气泡”：每个网页边上都有一个气泡，点一下就打开魔镜。
 
 【输入框翻译】
 在网页的输入框里连按三次空格，把你打的母语翻译成设置好的语言并直接替换，按 Ctrl+Z 撤回。
@@ -109,7 +110,8 @@ HOW TO USE
 • Hold Ctrl+Alt+O to peek at the original; click the language button on the tab to switch directions.
 
 COLLAPSE INTO A BUBBLE
-Click "–" on the tab and the mirror smoothly shrinks into a small bubble at the edge of the page. Drag it to either side and it snaps there; click it and the mirror comes back where it was.
+Drag the mirror by the grip on its tab to the edge of the page and it smoothly shrinks into a small ball docked there, pausing translation. Drag the ball out and it becomes a dashed frame that follows the pointer while translation starts; let go and the mirror is back. Clicking the ball also brings it back where it was.
+Optionally, turn on "Show the mirror bubble on every page" in Settings, and every page gets a bubble that opens the mirror with one click.
 
 TRANSLATE WHAT YOU TYPE
 Press Space three times in a text box to translate what you typed into the language you set, right in place; Ctrl+Z undoes it.
@@ -156,7 +158,8 @@ Feedback: a885187@gmail.com</pre>
 • 按住 Ctrl+Alt+O 暫時看原文；點標籤上的語言按鈕隨時切換翻譯方向。
 
 【收成氣泡】
-點標籤上的「–」，魔鏡平滑地縮成一個小氣泡貼在頁面邊緣；拖到左邊或右邊會自動吸附，點一下又彈回原來的位置。
+按住標籤左頭的抓手把魔鏡拖到頁面邊緣，它會平滑地縮成一個小球吸在邊上，暫停翻譯；把球從邊上拖出來，它變成虛線框跟著滑鼠走，同時開始翻譯，放開就是魔鏡。點一下球也能彈回原來的位置。
+設定裡還可以開啟「所有網頁預設顯示魔鏡氣泡」：每個網頁邊上都有一個氣泡，點一下就開啟魔鏡。
 
 【輸入框翻譯】
 在網頁的輸入框裡連按三次空格，把你打的母語翻譯成設定好的語言並直接取代，按 Ctrl+Z 復原。
@@ -241,14 +244,14 @@ Feedback: a885187@gmail.com</pre>
 
     <div class="field">
       <div class="label">activeTab 的理由<button class="copy" data-for="p-active">复制</button></div>
-<pre id="p-active">Used only after the user clicks the toolbar icon or presses the keyboard shortcut, to show the translation frame on the current tab. The extension does nothing on any page until the user does this.</pre>
-      <div class="note">只在用户点图标或按快捷键后，在当前标签页显示镜框；用户不操作就不碰任何网页。</div>
+<pre id="p-active">Used after the user clicks the toolbar icon or presses the keyboard shortcut, to show the translation frame on the current tab. Unless the user turns on the optional "Show the mirror bubble on every page" setting, the extension does nothing on any page until the user does this.</pre>
+      <div class="note">用户点图标或按快捷键后，在当前标签页显示镜框；除非用户打开“所有网页默认显示魔镜气泡”，用户不操作就不碰任何网页。</div>
     </div>
 
     <div class="field">
       <div class="label">scripting 的理由<button class="copy" data-for="p-script">复制</button></div>
-<pre id="p-script">Injects the extension's own bundled scripts (no remote code) into the current tab when the user clicks the toolbar icon or presses the shortcut. These scripts build the translation frame and find the text to translate.</pre>
-      <div class="note">用户点图标或按快捷键时，把扩展自带的脚本（不从网上加载代码）放进当前标签页，用来画镜框、找要翻译的文字。</div>
+<pre id="p-script">Injects the extension's own bundled scripts (no remote code) into the current tab when the user clicks the toolbar icon or presses the shortcut. These scripts build the translation frame and find the text to translate. If the user turns on the optional "Show the mirror bubble on every page" setting, the same bundled scripts are registered as content scripts, so each page shows a small bubble that opens the frame when clicked; the bubble reads no page content.</pre>
+      <div class="note">用户点图标或按快捷键时，把扩展自带的脚本（不从网上加载代码）放进当前标签页，用来画镜框、找要翻译的文字；用户打开“所有网页默认显示魔镜气泡”后，同样这些脚本登记成内容脚本，每个网页放一个点了才打开镜框的气泡（气泡不读网页内容）。</div>
     </div>
 
     <div class="field">
@@ -259,8 +262,8 @@ Feedback: a885187@gmail.com</pre>
 
     <div class="field">
       <div class="label">主机权限的理由（Host permissions）<button class="copy" data-for="p-host">复制</button></div>
-<pre id="p-host">http://127.0.0.1/* and http://localhost/*: send page text to a translation model running on the user's own computer (Ollama, LM Studio). https://api.deepseek.com/*: one of the built-in translation services. Optional https://*/* and http://*/*: requested at runtime only when the user adds a translation service at another address (for example OpenAI, Google Gemini or a custom endpoint), and used only for that address. Page text is sent only to the service the user configured.</pre>
-      <div class="note">本机地址：请求这台电脑上的模型；api.deepseek.com：内置的翻译服务之一；其他网址（可选权限）：只在用户添加该网址的翻译服务时才申请，只用于这个网址。</div>
+<pre id="p-host">http://127.0.0.1/* and http://localhost/*: send page text to a translation model running on the user's own computer (Ollama, LM Studio). https://api.deepseek.com/*: one of the built-in translation services. Optional https://*/* and http://*/*: requested at runtime only in two cases: when the user adds a translation service at another address (for example OpenAI, Google Gemini or a custom endpoint), used only for that address; and when the user turns on "Show the mirror bubble on every page" in Settings, used only to add the bundled scripts to each page so a small bubble can open the translation frame there and so pressing Space three times translates the user's own text in a text box. The bubble reads no page content. Page text is sent only to the service the user configured, and only after the user opens the frame or presses Space three times in a text box.</pre>
+      <div class="note">本机地址：请求这台电脑上的模型；api.deepseek.com：内置的翻译服务之一；其他网址（可选权限）只在两种情况下申请：用户添加该网址的翻译服务（只用于这个网址），或者用户打开“所有网页默认显示魔镜气泡”（只用来在每个网页放气泡、让输入框翻译到处能用；气泡不读网页内容）。</div>
     </div>
 
     <div class="field">
@@ -297,7 +300,9 @@ Feedback: a885187@gmail.com</pre>
 Option A (free, local): install Ollama from https://ollama.com, run "ollama pull gemma4:12b", and keep the default service "Ollama on this PC".
 Option B: in Settings choose any listed provider (for example OpenAI or Google Gemini), paste an API key, click "Test connection", then "Save".
 
-Then open any English article (for example https://en.wikipedia.org/wiki/Glacier) and click the toolbar icon or press Alt+Shift+M. A blue frame appears; inside it, the page text is replaced by the translation in the same layout. Drag the dark tab to move the frame, drag the border to resize it, and hold Ctrl+Alt+O to see the original.</pre>
+Then open any English article (for example https://en.wikipedia.org/wiki/Glacier) and click the toolbar icon or press Alt+Shift+M. A blue frame appears; inside it, the page text is replaced by the translation in the same layout. Drag the dark tab to move the frame, drag the border to resize it, and hold Ctrl+Alt+O to see the original.
+
+Optional: in Settings under Appearance, tick "Show the mirror bubble on every page" (Chrome asks for access to all websites). Every page then shows a small bubble at the right edge; click it to open the frame.</pre>
       <div class="note">用户名、密码两栏空着。审核员没有 Key 也能用本机 Ollama 试；要不要另外给审核员一个测试用的 Key，由你决定（我不会用你的 Key）。</div>
     </div>
   </section>

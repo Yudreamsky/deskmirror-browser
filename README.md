@@ -22,9 +22,10 @@ This is the browser companion of [DeskMirror](https://github.com/Yudreamsky/desk
 - Links, buttons and input boxes inside the mirror still work: clicks go to the real page underneath.
 - Hold `Ctrl+Alt+O` to peek at the original; the language button on the tab switches the translation direction.
 - The tab shows the tokens sent (↑) and received (↓) since the mirror opened; hover over it to see exact numbers.
-- Click `–` on the tab to collapse the mirror into a bubble. Drag the bubble to either side and it snaps to the edge; click it to bring the mirror back where it was.
+- Drag the grip at the left end of the tab to the left or right edge of the page: the mirror shrinks into a ball docked there, half tucked in, and translation pauses. Drag the ball out and it turns into a dashed frame that follows the pointer while translation starts; let go and it is the mirror again. Clicking the ball, or `–` on the tab, works too.
 - Two skins under *Appearance* in Settings: Classic, or Liquid Glass (frosted and rounded, follows the system light or dark mode).
 - Press Space three times in a text box to translate what you typed into the language set under *Translate input boxes into*; Ctrl+Z undoes it. This works on pages where you have opened the mirror, even after closing it.
+- Turn on *Show the mirror bubble on every page* under *Appearance*: every page then gets a bubble tucked into the edge that opens the mirror, and input box translation works everywhere. The bubble copies and translates nothing until you click it. Chrome asks for access to all websites once.
 
 ## Translation services
 
@@ -38,7 +39,7 @@ There is no account, no developer server and no analytics. Page text is sent onl
 
 ## How it works
 
-The extension keeps a live copy of the page in a sandboxed, same-origin iframe stacked exactly over the real page, like two sheets of paper. Text blocks in the copy are replaced by their translations, and each block's size is locked to the original, so the two sheets stay aligned. Only the frame's area of the copy is visible. Clicks go through to the real page. Scrolling is synchronized on the compositor with scroll-driven animations, so the copy doesn't lag behind while scrolling. Canvases, videos, iframes and input boxes show the real page through holes. Translated text that sits on top of a canvas is shown again over the hole, so node-based apps like Comfy Cloud work.
+The extension keeps a live copy of the page in a sandboxed, same-origin iframe stacked exactly over the real page, like two sheets of paper. Text blocks in the copy are replaced by their translations, and each block's size is locked to the original, so the two sheets stay aligned. Only the frame's area of the copy is visible. Clicks go through to the real page. Scrolling is synchronized on the compositor with scroll-driven animations, so the copy doesn't lag behind while scrolling. CSS animations, transitions and script animations in the copy run on the real page's own timeline with the same start times, so carousels and marquees stay aligned frame by frame. Canvases, videos, iframes and input boxes show the real page through holes. Translated text that sits on top of a canvas is shown again over the hole, so node-based apps like Comfy Cloud work.
 
 ## Development
 
@@ -52,6 +53,8 @@ node tests\canvas.mjs
 node tests\usage.mjs
 node tests\bubble.mjs
 node tests\field.mjs
+node tests\auto.mjs
+node tests\anim.mjs
 node tools\pack.mjs
 ```
 
