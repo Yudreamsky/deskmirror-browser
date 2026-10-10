@@ -23,7 +23,8 @@ export function fakeService(mode) {
       const segs = [...String(user ? user.content : '').matchAll(/^\[(\d+)\] (.*)$/gm)].map((m) => m[2]);
       const sys = (j.messages || []).find((m) => m.role === 'system');
       const src = /read it as (\w+)/.exec(sys ? sys.content : '');
-      svc.hits.push({ mode: svc.mode, segments: segs, streamOptions: !!j.stream_options, thinking: !!j.thinking,
+      const tgt = /into ([^.]+)\. Each input/.exec(sys ? sys.content : '');
+      svc.hits.push({ mode: svc.mode, segments: segs, streamOptions: !!j.stream_options, thinking: !!j.thinking, target: tgt ? tgt[1] : '',
         source: src ? ({ Chinese: 'zh', English: 'en', Japanese: 'ja', Korean: 'ko', Indonesian: 'id' })[src[1]] || src[1] : 'auto' });
       if (svc.rejectUsage && j.stream_options) {
         res.writeHead(400, { 'Content-Type': 'application/json' });

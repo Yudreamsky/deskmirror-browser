@@ -1,5 +1,10 @@
 # DeskMirror for browsers · Changes
 
+## 0.7.1 (2026-10-10)
+- After a text box is translated, press Space three times again to switch back to the original, and again for the translation. Both stay in the page's memory, so switching sends no request and uses no tokens; if you edit the original or change the "Translate input boxes into" language, it translates again.
+- In web editors that keep their own copy of the text (Slate and CKEditor 5, for example), the translation used to only look replaced: the editor still held the original, so the next key brought it back and the original was what got sent. The translation now goes in through the editor itself. Tried on the demo editors of Slate, Lexical, ProseMirror, Quill, Draft.js, CKEditor 5 and Trix.
+- In editors that make each line a paragraph, translated text keeps its paragraphs instead of gaining a blank line between them.
+
 ## 0.7.0 (2026-10-10)
 - A grip at the left end of the tab: drag the mirror by it to the left or right edge of the page and it shrinks into a ball docked there, half tucked in, and translation pauses. Drag the ball out and it smoothly turns into a dashed frame that follows the pointer while translation starts; let go and it lands as the mirror. You can go back and forth in one drag.
 - New option "Show the mirror bubble on every page" (Settings, Appearance): every page you open gets a mirror bubble half tucked into the edge; click it to open the mirror, and closing the mirror shrinks it back into the bubble. Pressing Space three times in text boxes then works on every page too. The bubble copies and translates nothing until you open it, adding about 10 ms per page. Chrome asks for access to all websites when you turn it on.

@@ -24,7 +24,7 @@ This is the browser companion of [DeskMirror](https://github.com/Yudreamsky/desk
 - The tab shows the tokens sent (↑) and received (↓) since the mirror opened; hover over it to see exact numbers.
 - Drag the grip at the left end of the tab to the left or right edge of the page: the mirror shrinks into a ball docked there, half tucked in, and translation pauses. Drag the ball out and it turns into a dashed frame that follows the pointer while translation starts; let go and it is the mirror again. Clicking the ball, or `–` on the tab, works too.
 - Two skins under *Appearance* in Settings: Classic, or Liquid Glass (frosted and rounded, follows the system light or dark mode).
-- Press Space three times in a text box to translate what you typed into the language set under *Translate input boxes into*; Ctrl+Z undoes it. This works on pages where you have opened the mirror, even after closing it.
+- Press Space three times in a text box to translate what you typed into the language set under *Translate input boxes into*; press it three times again to switch back to the original (no new request), or use Ctrl+Z. This works on pages where you have opened the mirror, even after closing it.
 - Turn on *Show the mirror bubble on every page* under *Appearance*: every page then gets a bubble tucked into the edge that opens the mirror, and input box translation works everywhere. The bubble copies and translates nothing until you click it. Chrome asks for access to all websites once.
 
 ## Translation services
