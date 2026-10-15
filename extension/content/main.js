@@ -160,6 +160,7 @@
         cfg.source = source;
         cfg.target = target;
         if (s.units) s.units.setLanguages(source, target);
+        if (s.subs) s.subs.setLanguages(source, target);
         if (cfg.onLang) cfg.onLang(source, target);
         else saveLanguages(source, target);
       },
@@ -181,11 +182,14 @@
             a.cancel();
           }).catch(() => {});
           s.units.setHidden(true);
+          s.subs.setHidden(true);
+          s.subs.tick();
         } else {
           clip.classList.remove('fold');
           s.clipDirty = true;
           clip.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 240, easing: 'ease-out' });
           s.units.setHidden(false);
+          s.subs.setHidden(false);
         }
       },
       // 关掉魔镜时缩成的气泡落定了：冷下来
@@ -256,6 +260,9 @@
         else frame.setStatus(t('ready'), 'ok', tip, extra);
       },
     });
+    // 视频字幕：读整条字幕、提前翻，在镜框里原字幕的位置换成译文（见 subs.js）
+    s.subs = new DM.Subs(shell, { backend, frame, copy, source: cfg.source || 'auto', target: cfg.target,
+      context: () => ((document.title || '').trim() + ' — ' + location.hostname).slice(0, 160) });
     if ('onUsage' in backend) backend.onUsage = (u) => s.addUsage(u);
     if ('onEngine' in backend) {
       backend.onEngine = (m) => {
@@ -300,18 +307,23 @@
         s.clipDirty = false;
         updateClip();
       }
+      if (!s.folded) s.subs.tick();
     };
     tick();
 
     const setPaused = (on) => {
       s.units.setPaused(on);
+      s.subs.setPaused(on);
       frame.setPaused(on);
       copy.clip.classList.toggle('off', on);
     };
     s.setPaused = setPaused;
 
     // 按住 Ctrl+Alt+O 看原文（和桌面版一样）
-    const peek = (on) => copy.clip && copy.clip.classList.toggle('peek', on);
+    const peek = (on) => {
+      if (copy.clip) copy.clip.classList.toggle('peek', on);
+      s.subs.setPeek(on);
+    };
     s.onKey = (e) => {
       if (e.type === 'keydown' && e.ctrlKey && e.altKey && e.code === 'KeyO') {
         peek(true);
@@ -331,6 +343,7 @@
       window.removeEventListener('keyup', s.onKey, true);
       window.removeEventListener('blur', s.onBlur);
       s.units.destroy();
+      s.subs.destroy();
       copy.destroy();
       if (backend.close) backend.close();
     };
@@ -346,6 +359,7 @@
     s.cold = true;
     s.copy = null;
     s.units = null;
+    s.subs = null;
     s.setPaused = null;
     s.engine = null;
     s.clip = '';
@@ -420,6 +434,7 @@
     if (source !== (was.source || 'auto') || target !== was.target) {
       s.frame.setLang(source, target);
       if (s.units) s.units.setLanguages(source, target);
+      if (s.subs) s.subs.setLanguages(source, target);
       s.cfg.source = source;
       s.cfg.target = target;
     }

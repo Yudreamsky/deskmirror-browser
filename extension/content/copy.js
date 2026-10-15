@@ -21,6 +21,9 @@
   // 图片、视频这类元素的大小取决于加载状态（没加载完、加载失败、懒加载），两边常常不一样，按真网页钉住
   const REPLACED = new Set(['img', 'video', 'canvas', 'iframe', 'embed', 'object']);
 
+  /** 魔镜自己放进网页的东西（输入框旁的小提示、全屏时的字幕层），复制品里不要。 */
+  const ownNode = (el) => el.hasAttribute('data-deskmirror-badge') || el.hasAttribute('data-deskmirror-own');
+
   function shadowOf(el) {
     try {
       if (globalThis.chrome && chrome.dom && chrome.dom.openOrClosedShadowRoot) {
@@ -263,7 +266,7 @@
       const cdoc = this.cdoc;
       switch (orig.nodeType) {
         case 1: {
-          if (orig === this.shell.host || orig.hasAttribute('data-deskmirror-badge')) return null;
+          if (orig === this.shell.host || ownNode(orig)) return null;
           const tag = orig.localName;
           let el;
           try {
@@ -910,7 +913,7 @@
       const walk = (start) => {
         const tw = document.createTreeWalker(start, NodeFilter.SHOW_ELEMENT, {
           acceptNode: (el) => {
-            if (el === this.shell.host || el.hasAttribute('data-deskmirror-badge')) return NodeFilter.FILTER_REJECT;
+            if (el === this.shell.host || ownNode(el)) return NodeFilter.FILTER_REJECT;
             const cs = getComputedStyle(el);
             if (cs.display === 'none') return NodeFilter.FILTER_REJECT;
             if (cs.position === 'fixed') {

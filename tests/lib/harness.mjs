@@ -11,14 +11,14 @@ export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
 export const T = require(path.join(ROOT, 'extension/content/text.js'));
 const LLM = require(path.join(ROOT, 'extension/llm.js'));
 
-export const CONTENT_FILES = ['text.js', 'copy.js', 'units.js', 'frame.js', 'field.js', 'main.js'];
+export const CONTENT_FILES = ['text.js', 'copy.js', 'units.js', 'frame.js', 'field.js', 'subs.js', 'main.js'];
 
 export function bundle() {
   return CONTENT_FILES.map((f) => fs.readFileSync(path.join(ROOT, 'extension/content', f), 'utf8')).join('\n;\n');
 }
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml',
-  '.png': 'image/png', '.json': 'application/json' };
+  '.png': 'image/png', '.json': 'application/json', '.webm': 'video/webm', '.vtt': 'text/vtt; charset=utf-8' };
 
 /** 只服务 tests/pages 的本地网页服务，端口随机。 */
 export function serve(dir = path.join(ROOT, 'tests/pages')) {
@@ -29,7 +29,19 @@ export function serve(dir = path.join(ROOT, 'tests/pages')) {
       res.writeHead(404).end('not found');
       return;
     }
-    res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'max-age=60' });
+    const type = TYPES[path.extname(file)] || 'application/octet-stream';
+    // 视频跳着播要按范围取（Range）
+    const size = fs.statSync(file).size;
+    const m = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || '');
+    if (m && (m[1] || m[2])) {
+      const start = m[1] ? Number(m[1]) : Math.max(0, size - Number(m[2]));
+      const end = m[1] && m[2] ? Math.min(Number(m[2]), size - 1) : size - 1;
+      res.writeHead(206, { 'Content-Type': type, 'Accept-Ranges': 'bytes', 'Content-Range': `bytes ${start}-${end}/${size}`,
+        'Content-Length': end - start + 1 });
+      fs.createReadStream(file, { start, end }).pipe(res);
+      return;
+    }
+    res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'max-age=60', 'Accept-Ranges': 'bytes', 'Content-Length': size });
     fs.createReadStream(file).pipe(res);
   });
   return new Promise((resolve) => server.listen(0, '127.0.0.1', () => {

@@ -1,5 +1,12 @@
 # DeskMirror for browsers · Changes
 
+## 0.8.0 (2026-10-15)
+- Video subtitles: when the mirror covers a video with captions turned on, the whole subtitle track is read and translated ahead of playback (the next five minutes, topped up as it plays; after a seek, that part first), and each line replaces the original caption inside the mirror. Outside the mirror the original captions stay. Only captions that are turned on are translated; hold Ctrl+Alt+O to see the originals.
+- Where the subtitles come from: subtitle tracks on the page (`<track>`, and players that use them, such as video.js and Plyr) are read directly. YouTube's caption requests need a token the player computes on the spot, so fetching them ourselves only returns empty files; a small script on the page copies the captions when the player loads them, and asks the player to load them again if it already had.
+- YouTube's auto-generated captions arrive word by word, so they are joined into sentences at pauses and line ends before translation; when the text on screen doesn't match the track at that moment (during an ad, for example), the original is left alone.
+- Fullscreen: when the player goes fullscreen, the translations follow; when the video element itself goes fullscreen, the subtitle track temporarily holds the translations and gets its own text back afterwards.
+- Captions that players draw over the video are no longer translated as ordinary page text: the video is a hole in the mirror, so those translations never showed and only used tokens.
+
 ## 0.7.1 (2026-10-10)
 - After a text box is translated, press Space three times again to switch back to the original, and again for the translation. Both stay in the page's memory, so switching sends no request and uses no tokens; if you edit the original or change the "Translate input boxes into" language, it translates again.
 - In web editors that keep their own copy of the text (Slate and CKEditor 5, for example), the translation used to only look replaced: the editor still held the original, so the next key brought it back and the original was what got sent. The translation now goes in through the editor itself. Tried on the demo editors of Slate, Lexical, ProseMirror, Quill, Draft.js, CKEditor 5 and Trix.

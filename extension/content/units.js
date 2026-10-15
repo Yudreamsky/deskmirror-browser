@@ -11,7 +11,10 @@
   const T = DM.text;
 
   const SKIP = 'script,style,noscript,template,textarea,select,option,pre,code,kbd,samp,svg,math,'
-    + '[translate="no"],.notranslate,[contenteditable=""],[contenteditable="true"],[contenteditable="plaintext-only"]';
+    + '[translate="no"],.notranslate,[contenteditable=""],[contenteditable="true"],[contenteditable="plaintext-only"],'
+    // 播放器画在视频上的字幕：视频在镜框里是个洞，这些字的译文露不出来；视频字幕由 subs.js 提前翻、单独画
+    + '.ytp-caption-window-container,.plyr__captions,.vjs-text-track-display,.jw-captions,.jw-text-track-container,'
+    + '.player-timedtext,.bpx-player-subtitle-wrap';
   const NOTRANS = '[translate="no"],.notranslate';
   const ATOMIC = new Set(['img', 'svg', 'canvas', 'video', 'audio', 'iframe', 'embed', 'object', 'input', 'select',
     'textarea', 'button', 'br', 'wbr', 'hr', 'picture', 'math', 'meter', 'progress']);

@@ -40,7 +40,7 @@
 </head>
 <body>
 <main>
-  <h1>Chrome 应用商店 · 填写清单（桌面魔镜 0.7.1）</h1>
+  <h1>Chrome 应用商店 · 填写清单（桌面魔镜 0.8.0）</h1>
   <p class="sub warn">第一次提交因“关键字垃圾内容”被拒：说明里列了一长串服务商名字。下面三份说明已经改成不列名单，重新复制、替换后再提交审核。以后写说明也不要列品牌名单。</p>
   <p class="sub">一边开着开发者后台，一边开着这一页：文字点“复制”再粘贴进对应的框；图片从
     <code>store\images</code> 文件夹上传。扩展的名字和一句话简介来自 zip 包本身，后台里不用填。</p>
@@ -64,6 +64,9 @@
 【收起成气泡】
 按住标签左头的抓手把魔镜拖到页面边缘，它会平滑地缩成一个小球吸在边上，暂停翻译；把球从边上拖出来，它变成虚线框跟着鼠标走，同时开始翻译，松手就是魔镜。点一下球也能弹回原来的位置。
 设置里还可以打开“所有网页默认显示魔镜气泡”：每个网页边上都有一个气泡，点一下就打开魔镜。
+
+【视频字幕】
+镜框盖住开着字幕的视频时，整条字幕按播放位置提前翻好，播到哪句就在原字幕的位置换成译文，不用等。全屏看也跟着换。
 
 【输入框翻译】
 在网页的输入框里连按三次空格，把你打的母语翻译成设置好的语言并直接替换；再连按三次空格换回原文。
@@ -113,6 +116,9 @@ COLLAPSE INTO A BUBBLE
 Drag the mirror by the grip on its tab to the edge of the page and it smoothly shrinks into a small ball docked there, pausing translation. Drag the ball out and it becomes a dashed frame that follows the pointer while translation starts; let go and the mirror is back. Clicking the ball also brings it back where it was.
 Optionally, turn on "Show the mirror bubble on every page" in Settings, and every page gets a bubble that opens the mirror with one click.
 
+VIDEO SUBTITLES
+Cover a video that has captions turned on, and the whole subtitle track is translated ahead of playback; each line replaces the original caption as it plays, with no waiting. It follows you into fullscreen too.
+
 TRANSLATE WHAT YOU TYPE
 Press Space three times in a text box to translate what you typed into the language you set, right in place; press it three times again to get your original back.
 
@@ -160,6 +166,9 @@ Feedback: a885187@gmail.com</pre>
 【收成氣泡】
 按住標籤左頭的抓手把魔鏡拖到頁面邊緣，它會平滑地縮成一個小球吸在邊上，暫停翻譯；把球從邊上拖出來，它變成虛線框跟著滑鼠走，同時開始翻譯，放開就是魔鏡。點一下球也能彈回原來的位置。
 設定裡還可以開啟「所有網頁預設顯示魔鏡氣泡」：每個網頁邊上都有一個氣泡，點一下就開啟魔鏡。
+
+【影片字幕】
+鏡框蓋住開著字幕的影片時，整條字幕按播放位置提前翻好，播到哪句就在原字幕的位置換成譯文，不用等。全螢幕看也跟著換。
 
 【輸入框翻譯】
 在網頁的輸入框裡連按三次空格，把你打的母語翻譯成設定好的語言並直接取代；再連按三次空格換回原文。
@@ -250,8 +259,8 @@ Feedback: a885187@gmail.com</pre>
 
     <div class="field">
       <div class="label">scripting 的理由<button class="copy" data-for="p-script">复制</button></div>
-<pre id="p-script">Injects the extension's own bundled scripts (no remote code) into the current tab when the user clicks the toolbar icon or presses the shortcut. These scripts build the translation frame and find the text to translate. If the user turns on the optional "Show the mirror bubble on every page" setting, the same bundled scripts are registered as content scripts, so each page shows a small bubble that opens the frame when clicked; the bubble reads no page content.</pre>
-      <div class="note">用户点图标或按快捷键时，把扩展自带的脚本（不从网上加载代码）放进当前标签页，用来画镜框、找要翻译的文字；用户打开“所有网页默认显示魔镜气泡”后，同样这些脚本登记成内容脚本，每个网页放一个点了才打开镜框的气泡（气泡不读网页内容）。</div>
+<pre id="p-script">Injects the extension's own bundled scripts (no remote code) into the current tab when the user clicks the toolbar icon or presses the shortcut. These scripts build the translation frame and find the text to translate. If the user turns on the optional "Show the mirror bubble on every page" setting, the same bundled scripts are registered as content scripts, so each page shows a small bubble that opens the frame when clicked; the bubble reads no page content. On YouTube pages with the mirror open, it also adds one small bundled script to the page that copies the captions the video player has already loaded, so the subtitles can be translated ahead of playback; it does not change any request.</pre>
+      <div class="note">用户点图标或按快捷键时，把扩展自带的脚本（不从网上加载代码）放进当前标签页，用来画镜框、找要翻译的文字；用户打开“所有网页默认显示魔镜气泡”后，同样这些脚本登记成内容脚本，每个网页放一个点了才打开镜框的气泡（气泡不读网页内容）。在 YouTube 上打开魔镜时，还往网页里放一小段扩展自带的脚本，只抄下播放器已经取到的字幕，用来提前翻译，不改任何请求。</div>
     </div>
 
     <div class="field">

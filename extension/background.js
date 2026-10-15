@@ -8,7 +8,8 @@ const T = self.__dm.text;
 const PS = self.__dm.presets;
 const C = self.__dm.chain;
 const LLM = self.__dm.llm;
-const CONTENT = ['content/text.js', 'content/copy.js', 'content/units.js', 'content/frame.js', 'content/field.js', 'content/main.js'];
+const CONTENT = ['content/text.js', 'content/copy.js', 'content/units.js', 'content/frame.js', 'content/field.js', 'content/subs.js',
+  'content/main.js'];
 // 自动放进网页的那一组：前面多一个 auto.js，告诉 main.js 只放气泡
 const AUTO_ID = 'dm-auto';
 const AUTO_JS = ['content/auto.js', ...CONTENT];
@@ -247,6 +248,14 @@ chrome.runtime.onConnect.addListener((port) => {
     for (const ac of running.values()) ac.abort();
     running.clear();
   });
+});
+
+// YouTube 网页上打开魔镜：往网页自己的环境里放抄字幕的小脚本（播放器取到字幕时抄一份给魔镜）
+chrome.runtime.onMessage.addListener((m, sender) => {
+  if (!m || m.type !== 'dm-yt-hook' || !sender.tab) return undefined;
+  chrome.scripting.executeScript({ target: { tabId: sender.tab.id, frameIds: [sender.frameId || 0] }, world: 'MAIN',
+    files: ['content/yt-main.js'] }).catch(() => {});
+  return undefined;
 });
 
 // 设置页的“测试连接”：试阵列里的一个服务；能用就清掉它的出错记录

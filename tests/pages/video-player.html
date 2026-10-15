@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Player video</title>
+<!-- 测试页：播放器自己画字幕（像 Plyr、video.js）：字幕轨设成 hidden，按 cuechange 把当前这句画进视频上的一个框 -->
+<style>
+  body { font: 16px/1.5 system-ui, sans-serif; margin: 24px; }
+  .player { position: relative; width: 640px; height: 360px; background: #000; }
+  .player video { width: 100%; height: 100%; display: block; }
+  .controls { position: absolute; left: 0; right: 0; bottom: 0; height: 30px; display: flex; gap: 10px; align-items: center;
+    padding: 0 10px; color: #ddd; font-size: 13px; background: linear-gradient(transparent, rgba(0,0,0,.6)); }
+  .captions { position: absolute; left: 0; right: 0; bottom: 42px; text-align: center; pointer-events: none; }
+  .captions span { display: inline-block; padding: 3px 10px; background: rgba(0, 0, 0, 0.8); color: #fff; font-size: 20px;
+    border-radius: 3px; white-space: pre-line; }
+</style>
+</head>
+<body>
+<h1>Player with its own captions</h1>
+<div class="player">
+  <video id="v" src="media/clip.webm" muted playsinline preload="auto">
+    <track kind="subtitles" srclang="en" label="English" src="media/clip.en.vtt">
+  </video>
+  <div class="captions" id="cap"></div>
+  <div class="controls"><span>Play</span><span>Mute</span><span>CC</span></div>
+</div>
+<div style="height: 1400px"></div>
+<script>
+  const v = document.getElementById('v');
+  const cap = document.getElementById('cap');
+  const tt = v.textTracks[0];
+  tt.mode = 'hidden';
+  tt.addEventListener('cuechange', () => {
+    const c = tt.activeCues && tt.activeCues[0];
+    cap.replaceChildren();
+    if (c) {
+      const s = document.createElement('span');
+      s.textContent = c.text;
+      cap.appendChild(s);
+    }
+  });
+</script>
+</body>
+</html>

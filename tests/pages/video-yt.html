@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fake YouTube player</title>
+<!--
+  测试页：像 YouTube 的播放器（真 YouTube 在自动化浏览器里只回空字幕，测不了）。
+  打开字幕时用 XHR 取 api/timedtext（json3，地址里带凭证），按播放时间把当前的字画进 .caption-window；
+  播放器上有 getOption / setOption（captions reload 会重新取一次）/ getVideoData。#asr：自动生成的字幕（一个词一个词）。
+-->
+<style>
+  body { font: 16px/1.5 system-ui, sans-serif; margin: 24px; }
+  #movie_player { position: relative; width: 640px; height: 360px; background: #000; overflow: hidden; }
+  #movie_player video { width: 640px; height: 360px; display: block; }
+  .ytp-caption-window-container { position: absolute; inset: 0; pointer-events: none; }
+  .caption-window { position: absolute; left: 50%; bottom: 36px; transform: translateX(-50%); text-align: center;
+    max-width: 90%; }
+  .captions-text { display: inline; }
+  .caption-visual-line { display: block; }
+  .ytp-caption-segment { background: rgba(8, 8, 8, 0.75); color: #fff; font-size: 22px; padding: 1px 6px; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<h1>A video with captions</h1>
+<div id="movie_player" class="html5-video-player">
+  <div class="html5-video-container"><video class="html5-main-video" src="media/clip.webm" muted playsinline preload="auto"></video></div>
+  <div class="ytp-caption-window-container"></div>
+</div>
+<script>
+  const p = document.getElementById('movie_player');
+  const video = p.querySelector('video');
+  const box = p.querySelector('.ytp-caption-window-container');
+  const asr = location.hash === '#asr';
+  let on = false, lines = [], loadCount = 0;
+  // 播放器内部：把 json3 拆成显示用的行（自动字幕按事件一行行显示，词按时间一个个出来）
+  function load() {
+    const x = new XMLHttpRequest();
+    x.open('GET', (asr ? 'api/timedtext-asr' : 'api/timedtext') + '?v=test123&lang=en&pot=TOKEN' + (++loadCount) + '&fmt=json3' + (asr ? '&kind=asr' : ''));
+    x.onload = () => {
+      const j = JSON.parse(x.responseText);
+      lines = j.events.filter((e) => e.segs && !e.aAppend).map((e) => ({ start: e.tStartMs / 1000,
+        end: (e.tStartMs + e.dDurationMs) / 1000, segs: e.segs.map((s) => ({ t: (e.tStartMs + (s.tOffsetMs || 0)) / 1000, w: s.utf8 })) }));
+    };
+    x.send();
+  }
+  p.getOption = (m, k) => (m === 'captions' && k === 'track' && on ? { languageCode: 'en' } : {});
+  p.setOption = (m, k) => { if (m === 'captions' && k === 'reload' && on) load(); };
+  p.getVideoData = () => ({ video_id: 'test123' });
+  window.captionsOn = () => { on = true; load(); };
+  window.captionsOff = () => { on = false; lines = []; };
+  window.loads = () => loadCount;
+  // 广告这类：画面上的字和取到的字幕对不上
+  let forced = null;
+  window.forceCaption = (t) => { forced = t; };
+  let last = '';
+  function render() {
+    requestAnimationFrame(render);
+    const t = video.currentTime;
+    const act = on ? lines.filter((l) => l.start <= t && t < l.end) : [];
+    const text = act.map((l) => l.segs.filter((s) => s.t <= t).map((s) => s.w).join('')).join('\n');
+    const shown = forced !== null ? forced : text;
+    if (shown === last) return;
+    last = shown;
+    box.replaceChildren();
+    if (!shown.trim()) return;
+    const w = document.createElement('div');
+    w.className = 'caption-window';
+    const ct = document.createElement('span');
+    ct.className = 'captions-text';
+    for (const line of shown.split('\n')) {
+      const vl = document.createElement('span');
+      vl.className = 'caption-visual-line';
+      const seg = document.createElement('span');
+      seg.className = 'ytp-caption-segment';
+      seg.textContent = line;
+      vl.appendChild(seg);
+      ct.appendChild(vl);
+    }
+    w.appendChild(ct);
+    box.appendChild(w);
+  }
+  render();
+</script>
+</body>
+</html>
