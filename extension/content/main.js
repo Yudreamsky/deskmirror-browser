@@ -263,6 +263,13 @@
     // 视频字幕：读整条字幕、提前翻，在镜框里原字幕的位置换成译文（见 subs.js）
     s.subs = new DM.Subs(shell, { backend, frame, copy, source: cfg.source || 'auto', target: cfg.target,
       context: () => ((document.title || '').trim() + ' — ' + location.hostname).slice(0, 160) });
+    // 在镜框里选字：选中、复制的是看到的译文（见 select.js）
+    s.select = new DM.SelectMirror(copy, {
+      open: () => frame.open,
+      full: () => !!frame.full,
+      live: () => !s.folded && !s.peeking && !s.units.paused,
+      own: (e) => e.composedPath().includes(shell.host),
+    });
     if ('onUsage' in backend) backend.onUsage = (u) => s.addUsage(u);
     if ('onEngine' in backend) {
       backend.onEngine = (m) => {
@@ -314,6 +321,7 @@
     const setPaused = (on) => {
       s.units.setPaused(on);
       s.subs.setPaused(on);
+      s.select.sync();
       frame.setPaused(on);
       copy.clip.classList.toggle('off', on);
     };
@@ -323,6 +331,8 @@
     const peek = (on) => {
       if (copy.clip) copy.clip.classList.toggle('peek', on);
       s.subs.setPeek(on);
+      s.peeking = on;
+      s.select.sync();
     };
     s.onKey = (e) => {
       if (e.type === 'keydown' && e.ctrlKey && e.altKey && e.code === 'KeyO') {
@@ -344,6 +354,7 @@
       window.removeEventListener('blur', s.onBlur);
       s.units.destroy();
       s.subs.destroy();
+      s.select.destroy();
       copy.destroy();
       if (backend.close) backend.close();
     };
@@ -360,6 +371,7 @@
     s.copy = null;
     s.units = null;
     s.subs = null;
+    s.select = null;
     s.setPaused = null;
     s.engine = null;
     s.clip = '';

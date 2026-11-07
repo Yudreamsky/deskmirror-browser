@@ -1,5 +1,10 @@
 # DeskMirror for browsers · Changes
 
+## 0.9.1 (2026-11-07)
+- Selecting text inside the mirror now selects the translation you see: wherever you drag, that part of the translation is highlighted, and Ctrl+C copies the translation. Double-click for a word, triple-click for a paragraph, Shift+click to extend, and dragging selected text away all work on the translation too. Before, the highlight was hidden under the translation and copying gave the original underneath. This matters most in whole-page mode, where you are really working with the translated page.
+- While you hold Ctrl+Alt+O to see the original, you select and copy the original; let go and the highlight on the translation is still there. If part of the selection is outside the mirror (where you see the original), copying still gives the original; in whole-page mode it is always the translation.
+- When the text next to a button changes (for example, a counter after you click Save), the button's label no longer switches back to the original.
+
 ## 0.9.0 (2026-11-07)
 - Whole-page translation: drag the bubble to the very top of the page and the mirror's frame opens out to cover the whole page, so the entire page is translated. The bubble becomes a half-ball docked at the top that follows the pointer sideways; let go and it tucks in a little, and it slides out when you hover over it.
 - Back from the whole page: drag the half-ball at the top down and it shrinks into a dashed frame the size the mirror had, following the pointer; let go and it is the mirror again (or drag it to the left or right edge to dock it as a bubble). Clicking the half-ball shrinks it back to the mirror where it was.

@@ -9,7 +9,7 @@ const PS = self.__dm.presets;
 const C = self.__dm.chain;
 const LLM = self.__dm.llm;
 const CONTENT = ['content/text.js', 'content/copy.js', 'content/units.js', 'content/frame.js', 'content/field.js', 'content/subs.js',
-  'content/main.js'];
+  'content/select.js', 'content/main.js'];
 // 自动放进网页的那一组：前面多一个 auto.js，告诉 main.js 只放气泡
 const AUTO_ID = 'dm-auto';
 const AUTO_JS = ['content/auto.js', ...CONTENT];

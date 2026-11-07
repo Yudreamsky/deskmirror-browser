@@ -20,6 +20,7 @@ This is the browser companion of [DeskMirror](https://github.com/Yudreamsky/desk
 - Click the toolbar icon or press `Alt+Shift+M` to open the mirror on the current page; press it again to close it.
 - Drag the dark tab to move the mirror; drag the blue border to resize it.
 - Links, buttons and input boxes inside the mirror still work: clicks go to the real page underneath.
+- Selecting text inside the mirror selects the translation you see, and Ctrl+C copies the translation (double-click, triple-click, Shift+click and dragging selected text away too). While you hold `Ctrl+Alt+O`, you select and copy the original.
 - Hold `Ctrl+Alt+O` to peek at the original; the language button on the tab switches the translation direction.
 - The tab shows the tokens sent (↑) and received (↓) since the mirror opened; hover over it to see exact numbers.
 - Drag the grip at the left end of the tab to the left or right edge of the page: the mirror shrinks into a ball docked there, half tucked in, and translation pauses. Drag the ball out and it turns into a dashed frame that follows the pointer while translation starts; let go and it is the mirror again. Clicking the ball, or `–` on the tab, works too.

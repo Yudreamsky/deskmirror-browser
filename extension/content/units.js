@@ -487,7 +487,7 @@
       const copy = this.copy;
       const cRoot = copy.map.get(u.node);
       if (!cRoot || !cRoot.isConnected) return false;
-      if (u.rendered) copy.resync(u.node);
+      if (u.rendered) this._resyncBlock(u);
       const { nodes, used } = T.parseTagged(text, u.tags.length);
       if (used.size < u.tags.length) this.stats.tagLoss++;
       const cdoc = cRoot.ownerDocument;
@@ -556,10 +556,28 @@
         if (n > 1) this._containers.set(u.container, n - 1);
         else this._containers.delete(u.container);
       } else {
-        this.copy.resync(u.node);
+        this._resyncBlock(u);
         for (const el of u.locked || []) this._unlock(el);
       }
       u.rendered = false;
+    }
+
+    /**
+     * 复制品里这一块按原文整块恢复。里面自己单独翻的块（按钮这类内联块）也跟着恢复成了原文：
+     * 记成没排、重新排一次（译文在缓存里，不用再请求）。不然旁边的字一变，按钮就一直是原文。
+     */
+    _resyncBlock(u) {
+      this.copy.resync(u.node);
+      let again = false;
+      const tw = document.createTreeWalker(u.node, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+      for (let n = tw.nextNode(); n; n = tw.nextNode()) {
+        const v = this.byNode.get(n);
+        if (!v || v === u || !v.rendered) continue;
+        this._revert(v);
+        if (v.state !== 'gone') v.state = 'new';
+        again = true;
+      }
+      if (again) this.pumpSoon(0);
     }
 
     // ---------------------------------------------------------------- 锁大小、缩字

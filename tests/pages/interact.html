@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Account settings</title>
+<!-- 测试页：整页翻译时网页还能不能用——按钮、链接、输入框、下拉框、悬停弹出的菜单、选文字、键盘 -->
+<style>
+  body { font: 16px/1.6 system-ui, sans-serif; margin: 0; }
+  header { display: flex; gap: 24px; align-items: center; padding: 14px 24px; background: #1f2937; color: #fff; }
+  .menu { position: relative; }
+  .menu .drop { display: none; position: absolute; left: 0; top: 100%; padding: 8px 12px; background: #fff; color: #111;
+    border: 1px solid #ccc; border-radius: 6px; white-space: nowrap; }
+  .menu:hover .drop { display: block; }
+  main { padding: 24px; max-width: 760px; }
+  button { font: inherit; padding: 6px 14px; }
+  input, select { font: inherit; padding: 4px 8px; }
+  .row { margin: 14px 0; }
+</style>
+</head>
+<body>
+<header>
+  <b>Example account</b>
+  <div class="menu" id="menu"><span>Products</span><div class="drop" id="drop">Pricing and plans</div></div>
+  <span>Support</span>
+</header>
+<main>
+  <h1>Account settings</h1>
+  <div class="row"><button id="btn">Save changes</button> clicked <span id="count">0</span> times</div>
+  <div class="row"><a id="lnk" href="#second">Read more about privacy</a></div>
+  <div class="row"><input id="name" placeholder="Your name"></div>
+  <div class="row"><select id="sel"><option value="a">Weekly summary</option><option value="b">Daily summary</option></select></div>
+  <p id="para">This paragraph has plenty of ordinary words, so that we can try selecting a few of them with the mouse and copy them.</p>
+  <div style="height: 1600px"></div>
+  <h2 id="second">Privacy and data</h2>
+  <p>We keep your data for as long as your account is open.</p>
+</main>
+<script>
+  document.getElementById('btn').addEventListener('click', () => {
+    const c = document.getElementById('count');
+    c.textContent = String(Number(c.textContent) + 1);
+  });
+</script>
+</body>
+</html>

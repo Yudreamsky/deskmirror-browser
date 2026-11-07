@@ -7,6 +7,10 @@
 //  5. 拖着标签上的抓手到顶端：只是挪镜框，不整页
 //  6. 整页时窗口变小：开口跟着变
 //  7. 整页时点图标关掉（打开了“所有网页默认显示魔镜气泡”）：缩成气泡；再点开回到原来的镜框
+//  8. 整页时网页照常能用（其实是在和译文那一页打交道）：按钮、链接、输入框、下拉框、悬停弹出的菜单、Tab；
+//     点了按钮、旁边的字变了，按钮上的字还是译文；拖着选字：译文上有高亮，复制出来是译文；双击选一个词；
+//     按住 Ctrl+Alt+O 看原文时复制的是原文，松开高亮还在；点链接选区不变、高亮也还在；
+//     普通镜框里：按在高亮的字上拖走，拖走的是译文；点一下空白处高亮没了；重新选字，复制出来是镜框里的译文
 // node tests/fullpage.mjs
 import path from 'node:path';
 import { launch, sleep } from './lib/cdp.mjs';
@@ -206,6 +210,171 @@ try {
     st = await state();
     check(folded && !st.folded && !st.full && same(st.rect, HOME) && st.line,
       `整页时点图标关掉：缩成边上的气泡；再点开回到原来的镜框（${JSON.stringify(st.rect)}）`);
+    await page.eval('__dm.stop(), 1');
+  }
+
+  // ---------------------------------------------------------------- 8. 整页时网页照常能用；选字、复制的是译文
+  {
+    await page.goto(server.url('interact.html'), 600);
+    await page.eval(`(() => { __dm.start({ rect: ${JSON.stringify(HOME)}, target: 'zh-Hans' }); return 1; })()`);
+    await page.settle(20000);
+    await sleep(300);
+    // 网页自己记下复制事件：有没有被换成译文、换成了什么
+    await page.eval(`(() => { window.__copies = []; window.addEventListener('copy', (e) => __copies.push({ prevented: e.defaultPrevented,
+      text: e.clipboardData ? e.clipboardData.getData('text/plain') : '' })); return 1; })()`);
+    const el = (sel) => box(`document.querySelector('${sel}')`);
+    const copyNode = (sel) => `__dm.session.copy.map.get(document.querySelector('${sel}'))`;
+    const key = async (k, code, vk, mods = 0, commands) => {
+      await page.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', key: k, code, windowsVirtualKeyCode: vk, modifiers: mods, ...(commands ? { commands } : {}) });
+      await page.send('Input.dispatchKeyEvent', { type: 'keyUp', key: k, code, windowsVirtualKeyCode: vk, modifiers: mods });
+    };
+    const copyNow = async () => {
+      await key('c', 'KeyC', 67, 2, ['copy']);
+      await sleep(200);
+      return page.eval('__copies[__copies.length - 1] || null');
+    };
+    const c0 = await ballCenter();
+    await mouse('mousePressed', c0.x, c0.y);
+    await drag(c0, { x: 640, y: 420 }, 10, 18);
+    await drag({ x: 640, y: 420 }, { x: 1100, y: 3 }, 10, 18);
+    await mouse('mouseReleased', 1100, 3);
+    await sleep(1800);
+    let st = await state();
+    check(st.full, '（整页翻译打开）');
+
+    const btn = await el('#btn');
+    const btnBefore = await page.eval(`${copyNode('#btn')}.textContent`);
+    await mouse('mousePressed', btn.x + btn.w / 2, btn.y + btn.h / 2);
+    await mouse('mouseReleased', btn.x + btn.w / 2, btn.y + btn.h / 2);
+    await sleep(1500);
+    const after = await page.eval(`(() => ({ count: document.getElementById('count').textContent, btn: ${copyNode('#btn')}.textContent }))()`);
+    check(after.count === '1' && after.btn === btnBefore && after.btn !== 'Save changes',
+      `点按钮：网页收到点击（计数 ${after.count}）；旁边的字变了，按钮上还是译文“${after.btn}”`);
+
+    const menu = await el('#menu');
+    await hover(menu.x + 10, menu.y + menu.h / 2);
+    await sleep(500);
+    const drop = await page.eval(`(() => { const c = ${copyNode('#drop')}; return { real: getComputedStyle(document.getElementById('drop')).display,
+      copy: c.ownerDocument.defaultView.getComputedStyle(c).display }; })()`);
+    check(drop.real === 'block' && drop.copy === 'block', '鼠标移到菜单上：弹出来的菜单在译文页上也弹出来');
+    await hover(640, 700);
+    await sleep(300);
+
+    const inp = await el('#name');
+    await mouse('mousePressed', inp.x + 20, inp.y + inp.h / 2);
+    await mouse('mouseReleased', inp.x + 20, inp.y + inp.h / 2);
+    await sleep(200);
+    await page.send('Input.insertText', { text: 'Lin' });
+    const sel = await el('#sel');
+    await mouse('mousePressed', sel.x + 20, sel.y + sel.h / 2);
+    await mouse('mouseReleased', sel.x + 20, sel.y + sel.h / 2);
+    await sleep(200);
+    await key('Escape', 'Escape', 27);
+    await key('ArrowDown', 'ArrowDown', 40);
+    await sleep(300);
+    await page.eval('document.getElementById("btn").focus(), 1');
+    await key('Tab', 'Tab', 9);
+    await sleep(200);
+    const forms = await page.eval(`({ name: document.getElementById('name').value, sel: document.getElementById('sel').value,
+      focus: document.activeElement.id })`);
+    check(forms.name === 'Lin' && forms.sel === 'b' && forms.focus === 'lnk', `输入框打字（“${forms.name}”）、下拉框换选项（${forms.sel}）、Tab 换焦点（${forms.focus}）都照常`);
+
+    // 拖着选字：译文上有高亮，复制出来是译文
+    const para = await el('#para');
+    const a = { x: para.x + 2, y: para.y + 12 }, z = { x: para.x + 300, y: para.y + 12 };
+    await mouse('mousePressed', a.x, a.y);
+    await drag(a, z, 10, 16);
+    await mouse('mouseReleased', z.x, z.y);
+    await sleep(300);
+    const picked = await page.eval(`(() => { const cs = __dm.session.copy.cdoc.getSelection();
+      return { real: getSelection().toString(), copy: cs.toString(), inPara: ${copyNode('#para')}.textContent.includes(cs.toString()) }; })()`);
+    await page.shot(path.join(OUT, 'fullpage-select.png'));
+    const cp = await copyNow();
+    check(picked.copy.length >= 5 && picked.inPara && picked.copy !== picked.real && cp && cp.prevented && cp.text === picked.copy,
+      `拖着选字：选中的是译文“${picked.copy}”（高亮画在译文上，下面网页选中的是“${picked.real}”），复制出来也是这段译文`);
+
+    // 双击选一个词
+    await page.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: para.x + 60, y: para.y + 12, button: 'left', buttons: 1, clickCount: 1 });
+    await page.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: para.x + 60, y: para.y + 12, button: 'left', buttons: 0, clickCount: 1 });
+    await page.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: para.x + 60, y: para.y + 12, button: 'left', buttons: 1, clickCount: 2 });
+    await page.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: para.x + 60, y: para.y + 12, button: 'left', buttons: 0, clickCount: 2 });
+    await sleep(300);
+    const word = await page.eval('__dm.session.copy.cdoc.getSelection().toString()');
+    check(word.length >= 1 && word.length <= 8, `双击：选中译文里的一个词“${word}”`);
+
+    // 按住 Ctrl+Alt+O 看原文：复制的是原文；松开以后译文上的高亮还在，复制的又是译文
+    const copySel = () => page.eval('__dm.session.copy.cdoc.getSelection().toString()');
+    await mouse('mousePressed', a.x, a.y);
+    await drag(a, z, 10, 16);
+    await mouse('mouseReleased', z.x, z.y);
+    await sleep(300);
+    const before = await copySel();
+    await page.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', key: 'o', code: 'KeyO', windowsVirtualKeyCode: 79, modifiers: 3 });
+    await sleep(300);
+    const peekHidden = await page.eval(`getComputedStyle(__dm.session.copy.clip).visibility`);
+    await page.send('Runtime.evaluate', { expression: 'document.execCommand("copy")', userGesture: true });
+    await sleep(200);
+    const pc = await page.eval('__copies[__copies.length - 1]');
+    await page.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'o', code: 'KeyO', windowsVirtualKeyCode: 79, modifiers: 3 });
+    await sleep(300);
+    const back = await copySel();
+    const pc2 = await copyNow();
+    check(before.length >= 5 && peekHidden === 'hidden' && pc && !pc.prevented && back === before && pc2 && pc2.prevented && pc2.text === before,
+      `按住 Ctrl+Alt+O 看原文时：复制出来是原文；松开以后高亮还在译文“${back}”上，复制的又是译文`);
+
+    // 链接：跳过去还是整页；选区没动，高亮也还在
+    const lnk = await el('#lnk');
+    await mouse('mousePressed', lnk.x + 10, lnk.y + lnk.h / 2);
+    await mouse('mouseReleased', lnk.x + 10, lnk.y + lnk.h / 2);
+    await sleep(1500);
+    const nav = await page.eval(`({ hash: location.hash, y: scrollY, real: getSelection().toString() })`);
+    st = await state();
+    const kept = await copySel();
+    check(nav.hash === '#second' && nav.y > 1000 && st.full && fullClip(st) && nav.real && kept === before,
+      `点链接：跳到 ${nav.hash}，还是整页翻译；网页的选区没动，译文上的高亮也还在`);
+
+    // 普通镜框里选字也一样：镜框里选的复制出来是译文
+    await page.eval('scrollTo(0, 0), 1');
+    await sleep(400);
+    const top = await page.eval(`(() => { const r = __dm.session.frame.bubble.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
+    await hover(top.x, 4);
+    await sleep(450);
+    const top2 = await page.eval(`(() => { const r = __dm.session.frame.bubble.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
+    await mouse('mousePressed', top2.x, top2.y);
+    await mouse('mouseReleased', top2.x, top2.y);
+    await sleep(900);
+    await page.eval(`(() => { __dm.session.frame._set({ x: 10, y: 300, w: 900, h: 200 }, true); return 1; })()`);
+    await sleep(1500);
+    const para2 = await el('#para');
+    // 按在高亮的字上拖走（浏览器拖的是选中的字）：拖走的是译文
+    await page.send('Input.setInterceptDrags', { enabled: true });
+    const dragged = page.cdp.wait('Input.dragIntercepted', page.sessionId, 5000).catch(() => null);
+    const p0 = { x: para2.x + 40, y: para2.y + 12 }, p1 = { x: para2.x + 200, y: para2.y + 110 };
+    await mouse('mousePressed', p0.x, p0.y);
+    await drag(p0, p1, 8, 20);
+    const dd = await dragged;
+    if (dd) await page.send('Input.dispatchDragEvent', { type: 'dragCancel', x: p1.x, y: p1.y, data: dd.data }).catch(() => {});
+    await mouse('mouseReleased', p1.x, p1.y);
+    await page.send('Input.setInterceptDrags', { enabled: false });
+    await sleep(300);
+    const items = dd ? dd.data.items : [];
+    const plain = (items.find((i) => i.mimeType === 'text/plain') || {}).data;
+    check(!!dd && plain === before && !items.some((i) => i.mimeType === 'text/html'),
+      `普通镜框里按在高亮的字上拖走：拖走的是译文“${plain}”`);
+    // 点一下空白处：选区、高亮都没了
+    await mouse('mousePressed', 600, 470);
+    await mouse('mouseReleased', 600, 470);
+    await sleep(300);
+    const cleared = { real: await page.eval('getSelection().toString()'), copy: await copySel() };
+    check(!cleared.real && !cleared.copy, '点一下空白处：网页的选区和译文上的高亮都没了');
+    const a2 = { x: para2.x + 2, y: para2.y + 12 }, z2 = { x: para2.x + 260, y: para2.y + 12 };
+    await mouse('mousePressed', a2.x, a2.y);
+    await drag(a2, z2, 10, 16);
+    await mouse('mouseReleased', z2.x, z2.y);
+    await sleep(300);
+    const small = await copySel();
+    const sc = await copyNow();
+    check(!(await state()).full && small.length >= 10 && sc && sc.prevented && sc.text === small, `普通镜框里重新选字：复制出来是镜框里的译文“${small}”`);
     await page.eval('__dm.stop(), 1');
   }
 } finally {
