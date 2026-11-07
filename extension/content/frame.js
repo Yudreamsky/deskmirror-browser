@@ -23,6 +23,7 @@
   const ZONE_OUT = 96;  // 拖着球，离开边缘这么远：变成虚线框
   const PULL = 36;      // 球被往里拖时最多跟出来多少（像被边缘吸着）
   const TAU = 60;       // 拖动中变形的时间常数（毫秒）：每帧往目标靠一截，目标跟着鼠标走
+  const TOP_ZONE = 14;  // 拖着气泡，鼠标到了页面最上沿这么近：镜框张开成整个页面（整页翻译）
 
   // 收起、弹出的曲线：起步快、收尾很柔（像 iOS 的弹性动画）；气泡吸附带一点回弹
   const EASE_FOLD = 'cubic-bezier(0.32, 0.72, 0, 1)';
@@ -264,6 +265,7 @@
   /** 页面可用宽度（不含竖滚动条），气泡贴右边时不压住滚动条。 */
   const viewW = () => document.documentElement.clientWidth || window.innerWidth;
   const viewH = () => document.documentElement.clientHeight || window.innerHeight;
+  const viewRect = () => ({ x: 0, y: 0, w: viewW(), h: viewH() });
 
   class Frame {
     constructor(shell, rect, handlers) {
@@ -275,7 +277,8 @@
       this.paused = false;
       this.skin = 'classic';
       this.folded = false;
-      this.bub = null;                // 气泡：{ side: 'left' | 'right', x, y, tucked }
+      this.bub = null;                // 气泡：{ side: 'left' | 'right' | 'top', x, y, tucked }
+      this.full = null;               // 整页翻译：{ home（原来的镜框） }；这时气泡是贴在顶端的半球
       this.home = null;               // 上次气泡停在哪：{ side, y（占页面高度的比例） }
       this.rect = Object.assign({}, rect);
       const mk = (cls, tag) => {
@@ -314,7 +317,7 @@
       this.bubble.textContent = '镜';
       this.bubble.tabIndex = 0;
       this.bubble.setAttribute('role', 'button');
-      this.bubble.addEventListener('pointerdown', (e) => this._gesture(e, 'ball'));
+      this.bubble.addEventListener('pointerdown', (e) => this._gesture(e, this.full ? 'top' : 'ball'));
       this._liveStep = this._liveStep.bind(this);
       this._live = null;              // 拖动中的变形（框 ⇄ 球）
       this._open = null;              // 变形时开口跟着形状走（译文那层的裁剪）
@@ -323,11 +326,18 @@
       this.bubble.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          this.unfold();
+          if (this.full) this.unfull();
+          else this.unfold();
         }
       });
       this._onResize = () => {
-        if (this.folded && this.bub && !this._busy && !this._live && !this._dragging) {
+        if (this._busy || this._live || this._dragging) return;
+        if (this.full) {
+          // 整页翻译：开口跟着窗口变大变小
+          this.rect = viewRect();
+          if (this.bub) this._placeBubble('top', this.bub.x, this.bub.tucked, 'still');
+          if (this.h.onRect) this.h.onRect(this.rect, true);
+        } else if (this.folded && this.bub) {
           this._placeBubble(this.bub.side, this.bub.y, this.bub.tucked, 'still');
         }
       };
@@ -400,6 +410,7 @@
     /** 开口的圆角（液态玻璃是圆角镜框；复制品的开口跟着切成圆角）。 */
     get radius() {
       if (this._open) return this._openR;
+      if (this.full) return 0;
       return this.skin === 'glass' ? GLASS_R - LINE : 0;
     }
 
@@ -488,7 +499,7 @@
     /** 气泡的提示：怎么展开，再加上用量（收起时标签看不见，鼠标停在气泡上也能看到发送、接收了多少）。 */
     _bubbleTitle() {
       const t = this.traffic.hidden ? '' : this.traffic.textContent;
-      this.bubble.title = DM.text.ui(this.ui, 'unfold') + (t ? '\n' + t + '\n' + (this.traffic.title || '') : '');
+      this.bubble.title = DM.text.ui(this.ui, this.full ? 'fullBall' : 'unfold') + (t ? '\n' + t + '\n' + (this.traffic.title || '') : '');
     }
 
     /**
@@ -550,17 +561,19 @@
       return [this.line, ...this.corners, ...Object.values(this.bands), this.tab];
     }
 
-    /** 气泡贴边时的位置；tucked 时藏进边缘一部分。 */
-    _bubbleXY(side, y, tucked) {
+    /** 气泡贴边时的位置；tucked 时藏进边缘一部分。at：左右两边是高度（y），顶端是横向位置（x）。 */
+    _bubbleXY(side, at, tucked) {
       const vw = viewW(), vh = viewH();
+      if (side === 'top') return { x: clamp(at, EDGE, vw - BUB - EDGE), y: tucked ? -BUB * TUCK : EDGE };
+      const y = at;
       const inX = side === 'left' ? EDGE : vw - BUB - EDGE;
       const outX = side === 'left' ? -BUB * TUCK : vw - BUB * (1 - TUCK);
       return { x: tucked ? outX : inX, y: clamp(y, EDGE, vh - BUB - EDGE) };
     }
 
     /** how：still 直接到位，snap 带回弹地吸过去，slide 平滑地滑过去。 */
-    _placeBubble(side, y, tucked, how) {
-      const p = this._bubbleXY(side, y, tucked);
+    _placeBubble(side, at, tucked, how) {
+      const p = this._bubbleXY(side, at, tucked);
       const b = this.bubble;
       b.classList.toggle('still', how === 'still');
       b.classList.toggle('slide', how === 'slide');
@@ -605,6 +618,13 @@
       if (this.folded || this._busy || this._live || this._dragging) return;
       this._busy = true;
       this._closeMenu();
+      // 整页翻译时收起（点图标关掉）：从整个页面缩成气泡，以后点开回到原来的镜框
+      const fullHome = this.full ? this.full.home : null;
+      if (fullHome) {
+        this.full = null;
+        this.bubble.classList.remove('on');
+        this._bubbleTitle();
+      }
       this.folded = true;
       if (this.h.onFold) this.h.onFold(true);
       const home = this._homeOf();
@@ -616,6 +636,7 @@
       anims[0].finished.then(() => {
         this.morph.classList.remove('on');
         anims.forEach((a) => a.cancel());
+        if (fullHome) this.rect = fullHome;
         this._placeBubble(home.side, p.y, false, 'still');
         this.bubble.classList.add('on');
         // 落定时轻轻弹一下
@@ -664,8 +685,8 @@
     _tuckLater() {
       clearTimeout(this._tuckTimer);
       this._tuckTimer = setTimeout(() => {
-        if (!this.folded || this._busy || this._dragging || !this.bub || this.bubble.matches(':hover')) return;
-        this._placeBubble(this.bub.side, this.bub.y, true, 'slide');
+        if (!(this.folded || this.full) || this._busy || this._dragging || !this.bub || this.bubble.matches(':hover')) return;
+        this._placeBubble(this.bub.side, this.bub.side === 'top' ? this.bub.x : this.bub.y, true, 'slide');
       }, 1600);
     }
 
@@ -673,7 +694,9 @@
       clearTimeout(this._tuckTimer);
       // 刚拖到边上藏好：气泡从鼠标底下滑进去时浏览器会补发一次“移上来”，别马上又滑出来
       if (this._docked && performance.now() - this._docked < 700) return;
-      if (this.folded && this.bub && this.bub.tucked && !this._dragging) this._placeBubble(this.bub.side, this.bub.y, false, 'slide');
+      if ((this.folded || this.full) && this.bub && this.bub.tucked && !this._dragging) {
+        this._placeBubble(this.bub.side, this.bub.side === 'top' ? this.bub.x : this.bub.y, false, 'slide');
+      }
     }
 
     // ---------------------------------------------------------------- 拖到边缘吸成球、从边上拖出来
@@ -681,6 +704,8 @@
      * 拖动（标签、抓手，或者边上的气泡）。from：'frame' 从镜框开始拖，'ball' 从气泡开始拖。
      * 拖着镜框让鼠标到了页面左右边缘：镜框缩成球吸在边上（停止翻译），放开就藏进边缘一半；
      * 拖着球离开边缘：球变成虚线框跟着鼠标走（开始翻译），放开就是镜框。拖着的时候可以来回变。只点一下气泡：弹回原处。
+     * 从气泡开始拖、鼠标到了页面最上沿：镜框一路张开到整个页面（整页翻译），气泡变成贴在顶端的半球；
+     * 'top' 从顶端的半球开始拖：往下拖离开顶端，缩回原来大小的虚线框；只点一下：缩回原来的镜框。
      */
     _gesture(e, from) {
       if (e.button !== 0 || this._busy || this._live) return;
@@ -688,14 +713,16 @@
       e.stopPropagation();
       const id = e.pointerId;
       try { e.currentTarget.setPointerCapture(id); } catch (x) { /* 已经松开 */ }
+      const ball = from !== 'frame';
       const g = {
-        mode: from,                    // frame 实线镜框跟着走；ball 球；dash 虚线框
+        mode: from === 'top' ? 'full' : from,   // frame 实线镜框跟着走；ball 球；dash 虚线框；full 整个页面
+        origin: ball ? 'ball' : 'frame',
         side: from === 'ball' && this.bub ? this.bub.side : null,
         x0: e.clientX, y0: e.clientY, moved: false,
-        home: Object.assign({}, this.rect),
+        home: Object.assign({}, from === 'top' ? this.full.home : this.rect),
         // 抓着镜框的哪一点；从气泡拖出来就当抓着标签左头的抓手
-        gx: from === 'ball' ? LINE + 14 : e.clientX - this.rect.x,
-        gy: from === 'ball' ? -(LINE + (this.skin === 'glass' ? GAP : 0) + TAB_H / 2) : e.clientY - this.rect.y,
+        gx: ball ? LINE + 14 : e.clientX - this.rect.x,
+        gy: ball ? -(LINE + (this.skin === 'glass' ? GAP : 0) + TAB_H / 2) : e.clientY - this.rect.y,
       };
       // 拖着的东西中途会藏起来（标签变成球、球变成框），监听放在 window 上，不靠被拖的元素
       const move = (ev) => {
@@ -709,7 +736,18 @@
           clearTimeout(this._tuckTimer);
           this._closeMenu();
           this.tab.classList.add('grabbing');
-          if (g.mode === 'ball') this.bubble.classList.add('drag');
+          if (g.mode === 'ball' || g.mode === 'full') this.bubble.classList.add('drag');
+        }
+        if (g.mode === 'full') {
+          // 整页时拖着顶端的半球：左右跟着走；往下拖离开顶端，缩回原来大小的虚线框
+          if (p.y > ZONE_OUT) this._fullToDash(g);
+          else {
+            this._followTop(g);
+            return;
+          }
+        } else if (g.origin === 'ball' && p.y <= TOP_ZONE) {
+          this._toFull(g);
+          return;
         }
         const near = g.mode === 'ball' ? this._edgeOf(p.x, ZONE_OUT, g.side) : this._edgeOf(p.x, ZONE);
         if (g.mode !== 'ball' && near) this._toBall(g, near);
@@ -732,11 +770,13 @@
         this.bubble.classList.remove('drag');
         if (!g.moved) {
           if (from === 'ball') this.unfold();
+          else if (from === 'top') this.unfull();
           return;
         }
         g.p = { x: ev.clientX, y: ev.clientY };
         if (g.mode === 'ball') this._dock(g);
         else if (g.mode === 'dash') this._land();
+        else if (g.mode === 'full') this._landFull();
         else this._set(this.rect, true);
       };
       window.addEventListener('pointermove', move, true);
@@ -867,6 +907,79 @@
       this._live.onSettle = finish;
     }
 
+    // ---------------------------------------------------------------- 拖到顶端：整页翻译
+    /** 整个页面的外框（边线画在开口外面，张开后看不见）；液态玻璃的圆角也一路收成直角（k 到 -1）。 */
+    _fullShape() {
+      return Object.assign(this._outline(viewRect()), { k: this.skin === 'glass' ? -1 : 0 });
+    }
+
+    /**
+     * 拖着气泡到了页面最上沿：镜框（虚线框，或者球）一路张开到整个页面，整页都是译文（还没开始翻译的这时开始）；
+     * 气泡变成贴在顶端的半球，跟着鼠标左右走。
+     */
+    _toFull(g) {
+      const prev = g.mode;
+      g.mode = 'full';
+      let from;
+      if (this._live) from = this._live.cur;
+      else if (prev === 'ball') {
+        const b = this.bubble.getBoundingClientRect();
+        from = { x: b.left, y: b.top, w: b.width, h: b.height, k: 1 };
+      } else from = Object.assign(this._outline(), { k: 0 });
+      this.full = { home: g.home };
+      this.rect = viewRect();
+      this._liveRun(from, this._fullShape(), true, () => {
+        this._liveEnd();
+        if (this.h.onRect) this.h.onRect(this.rect, true);
+      });
+      if (this.folded) {
+        this.folded = false;
+        if (this.h.onFold) this.h.onFold(false);
+      }
+      this.bubble.classList.add('on', 'still', 'drag');
+      this._followTop(g);
+      this._bubbleTitle();
+    }
+
+    _followTop(g) {
+      const x = clamp(g.p.x - BUB / 2, EDGE, viewW() - BUB - EDGE);
+      this.bubble.style.translate = x + 'px ' + EDGE + 'px';
+      this.bub = { side: 'top', x, y: EDGE, tucked: false };
+    }
+
+    /** 整页时放开：半球藏进顶端一点（鼠标移上去滑出来）。 */
+    _landFull() {
+      this._docked = performance.now();
+      this.bubble.classList.remove('still');
+      this._placeBubble('top', this.bub.x, true, 'snap');
+      if (!this._live && this.h.onRect) this.h.onRect(this.rect, true);
+    }
+
+    /** 整页时把半球往下拖：缩回原来那么大的虚线框，跟着鼠标走（接着翻译），放开就是镜框；拖到左右边缘照样收成球。 */
+    _fullToDash(g) {
+      g.mode = 'dash';
+      const from = this._live ? this._live.cur : this._fullShape();
+      this.rect = this.full.home;
+      this.full = null;
+      this.bubble.classList.remove('on', 'drag');
+      this.rect = this._dashRect(g);
+      this._liveRun(from, Object.assign(this._outline(), { k: 0 }), true, null);
+      this._bubbleTitle();
+    }
+
+    /** 只点一下顶端的半球：整个页面缩回原来的镜框，标签、四角淡入。 */
+    unfull() {
+      if (!this.full || this._busy || this._live || this._dragging) return;
+      const from = this._fullShape();
+      this.rect = this.full.home;
+      this.full = null;
+      clearTimeout(this._tuckTimer);
+      this.bubble.classList.remove('on');
+      this._liveRun(from, Object.assign(this._outline(), { k: 0 }), true, null);
+      this._land();
+      this._bubbleTitle();
+    }
+
     /** 镜框的边线、四角、抓边、标签：显示（标签、四角淡入）或藏起来（标签淡出）。 */
     _showParts(on) {
       if (on) {
@@ -934,7 +1047,7 @@
       const k = clamp(lv.cur.k, 0, 1);
       const glass = this.skin === 'glass';
       const r0 = glass ? GLASS_R : 0;
-      const r = r0 + (Math.min(w, h) / 2 - r0) * k;
+      const r = lv.cur.k < 0 ? r0 * (1 + Math.max(-1, lv.cur.k)) : r0 + (Math.min(w, h) / 2 - r0) * k;
       const s = this.morph.style;
       s.transform = `translate(${x}px, ${y}px)`;
       s.width = w + 'px';

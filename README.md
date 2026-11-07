@@ -23,6 +23,7 @@ This is the browser companion of [DeskMirror](https://github.com/Yudreamsky/desk
 - Hold `Ctrl+Alt+O` to peek at the original; the language button on the tab switches the translation direction.
 - The tab shows the tokens sent (↑) and received (↓) since the mirror opened; hover over it to see exact numbers.
 - Drag the grip at the left end of the tab to the left or right edge of the page: the mirror shrinks into a ball docked there, half tucked in, and translation pauses. Drag the ball out and it turns into a dashed frame that follows the pointer while translation starts; let go and it is the mirror again. Clicking the ball, or `–` on the tab, works too.
+- Drag the bubble to the very top of the page: the frame opens out over the whole page and everything is translated, with a half-ball docked at the top. Drag the half-ball down to shrink it back into the mirror (or click it).
 - Two skins under *Appearance* in Settings: Classic, or Liquid Glass (frosted and rounded, follows the system light or dark mode).
 - Press Space three times in a text box to translate what you typed into the language set under *Translate input boxes into*; press it three times again to switch back to the original (no new request), or use Ctrl+Z. This works on pages where you have opened the mirror, even after closing it.
 - Video subtitles: cover a video that has captions turned on with the mirror, and the whole subtitle track is translated ahead of playback (the next five minutes, topped up as it plays); each line replaces the original caption inside the mirror. This works with subtitle tracks on the page (`<track>`, video.js, Plyr and the like) and with YouTube, where a small script copies the captions the player has loaded (its caption files can't be fetched without a token the player computes). Auto-generated captions are joined into sentences first. In fullscreen the translations follow.
@@ -57,6 +58,7 @@ node tests\field.mjs
 node tests\auto.mjs
 node tests\anim.mjs
 node tests\subs.mjs
+node tests\fullpage.mjs
 node tools\pack.mjs
 ```
 

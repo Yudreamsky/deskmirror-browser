@@ -1,5 +1,10 @@
 # DeskMirror for browsers · Changes
 
+## 0.9.0 (2026-11-07)
+- Whole-page translation: drag the bubble to the very top of the page and the mirror's frame opens out to cover the whole page, so the entire page is translated. The bubble becomes a half-ball docked at the top that follows the pointer sideways; let go and it tucks in a little, and it slides out when you hover over it.
+- Back from the whole page: drag the half-ball at the top down and it shrinks into a dashed frame the size the mirror had, following the pointer; let go and it is the mirror again (or drag it to the left or right edge to dock it as a bubble). Clicking the half-ball shrinks it back to the mirror where it was.
+- Moving the mirror by the grip on its tab never turns it into the whole page, even at the top; only dragging the bubble does. In whole-page mode the frame follows window resizes, and closing from the toolbar shrinks it into the bubble, which then opens back to the mirror you had.
+
 ## 0.8.0 (2026-10-15)
 - Video subtitles: when the mirror covers a video with captions turned on, the whole subtitle track is read and translated ahead of playback (the next five minutes, topped up as it plays; after a seek, that part first), and each line replaces the original caption inside the mirror. Outside the mirror the original captions stay. Only captions that are turned on are translated; hold Ctrl+Alt+O to see the originals.
 - Where the subtitles come from: subtitle tracks on the page (`<track>`, and players that use them, such as video.js and Plyr) are read directly. YouTube's caption requests need a token the player computes on the spot, so fetching them ourselves only returns empty files; a small script on the page copies the captions when the player loads them, and asks the player to load them again if it already had.
