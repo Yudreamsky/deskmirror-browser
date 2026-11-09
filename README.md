@@ -38,7 +38,7 @@ This is the browser companion of [DeskMirror](https://github.com/Yudreamsky/desk
 
 ## Privacy
 
-There is no account, no developer server and no analytics. Page text is sent only to the translation service you choose, and API keys stay in this browser on your computer. Full policy: [store/privacy-policy.md](store/privacy-policy.md).
+There is no account, no developer server and no analytics. The text to translate, together with the page title and domain as context, is sent only to the translation service you choose (with a local model it stays on your computer), and API keys stay in this browser on your computer. Full policy: [store/privacy-policy.md](store/privacy-policy.md).
 
 ## How it works
 
